@@ -1,0 +1,63 @@
+import { describe, expect, it } from 'vitest';
+import type { Song } from './room';
+import { createRoomState, roomReducer, type RoomState } from './roomState';
+
+const song = (n: number): Song => ({ videoId: `v${n}`, title: `곡${n}`, durationSec: 200 });
+const lastText = (s: RoomState) => s.messages.at(-1)?.text;
+
+function withSongs(...ns: number[]): RoomState {
+  return ns.reduce((s, n) => roomReducer(s, { type: 'request', song: song(n) }), createRoomState());
+}
+
+describe('곡 신청', () => {
+  it('재생 중인 곡이 없으면 바로 재생하고, 있으면 대기큐 뒤에 넣는다', () => {
+    const s = withSongs(1, 2);
+    expect(s.now?.videoId).toBe('v1');
+    expect(s.queue.map((e) => e.videoId)).toEqual(['v2']);
+  });
+
+  it('같은 곡은 다시 신청할 수 없다', () => {
+    const s = roomReducer(withSongs(1, 2), { type: 'request', song: song(2) });
+    expect(s.queue).toHaveLength(1);
+    expect(lastText(s)).toBe('이미 신청된 곡이에요');
+  });
+
+  it('대기큐에는 한 사람당 3곡까지만', () => {
+    const s = roomReducer(withSongs(1, 2, 3, 4), { type: 'request', song: song(5) });
+    expect(s.queue).toHaveLength(3);
+    expect(lastText(s)).toContain('3곡까지');
+  });
+
+  it('본인 곡을 취소할 수 있다', () => {
+    const s = withSongs(1, 2);
+    const next = roomReducer(s, { type: 'cancel', entryId: s.queue[0]!.entryId });
+    expect(next.queue).toHaveLength(0);
+  });
+});
+
+describe('방장 명령어', () => {
+  it('방장이 아니면 실행되지 않는다', () => {
+    const s = roomReducer(withSongs(1, 2), { type: 'send', text: '/skip', isHost: false });
+    expect(s.now?.videoId).toBe('v1');
+    expect(lastText(s)).toBe('방장만 쓸 수 있는 명령어예요');
+  });
+
+  it('/skip은 대기큐 맨 앞 곡을 재생한다', () => {
+    const s = roomReducer(withSongs(1, 2, 3), { type: 'send', text: '/skip', isHost: true });
+    expect(s.now?.videoId).toBe('v2');
+    expect(s.queue.map((e) => e.videoId)).toEqual(['v3']);
+  });
+
+  it('/move는 대기큐 순서를 바꾸고, 범위 밖 번호는 거절한다', () => {
+    const s = roomReducer(withSongs(1, 2, 3, 4), { type: 'send', text: '/move 3 1', isHost: true });
+    expect(s.queue.map((e) => e.videoId)).toEqual(['v4', 'v2', 'v3']);
+    const bad = roomReducer(s, { type: 'send', text: '/move 9 1', isHost: true });
+    expect(bad.queue).toEqual(s.queue);
+  });
+
+  it('명령어는 채팅에 남지 않는다', () => {
+    const s = roomReducer(withSongs(1), { type: 'send', text: '/pause', isHost: true });
+    expect(s.messages.some((m) => m.kind === 'user')).toBe(false);
+    expect(s.paused).toBe(true);
+  });
+});

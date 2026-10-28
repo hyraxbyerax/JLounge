@@ -1,0 +1,70 @@
+/*
+ * 디자인 토큰 — docs/design.md 기준.
+ * 색·글꼴 값은 이 파일에만 쓰고, 화면은 변수만 쓴다.
+ */
+
+/* 밤 모드 (라운지 기본) */
+:root {
+  --color-bg: #1e2140;
+  --color-surface: #2b2f57;
+  --color-surface-2: #363b6b;
+  --color-text: #eceaf7;
+  --color-text-muted: #a9a8c9;
+  --color-light: #ffc86b;
+  --color-light-text: #2a2110;
+  --color-sofa: #8c5a9e;
+  --color-online: #7fd8be;
+  --color-danger: #f2768c;
+
+  --font-ui: 'SUIT Variable', 'SUIT', system-ui, sans-serif;
+  --font-sign: 'Gowun Batang', serif;
+
+  /* 글자 크기 단계: 12 / 14 / 16(본문) / 20 / 28 / 40px */
+  --text-12: 0.75rem;
+  --text-14: 0.875rem;
+  --text-16: 1rem;
+  --text-20: 1.25rem;
+  --text-28: 1.75rem;
+  --text-40: 2.5rem;
+
+  /* 간격: 4px의 배수 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* 모서리: 창문 6 / 패널 12 / 버튼·입력창 10 / 원형 */
+  --radius-window: 6px;
+  --radius-panel: 12px;
+  --radius-control: 10px;
+  --radius-round: 999px;
+
+  --duration-enter: 400ms;
+
+  /* 캐치마인드 그림판 잉크 (그림 내용 색이라 밤·낮 모드와 관계없이 같다) */
+  --ink-paper: #f7f5ef;
+  --ink-black: #26283f;
+  --ink-red: #e0475b;
+  --ink-orange: #f08a24;
+  --ink-green: #3e9d5a;
+  --ink-blue: #3b6fd8;
+  --ink-brown: #8a5a3b;
+  --ink-purple: #8c5a9e;
+}
+
+/* 낮 모드 (스케줄 관리) */
+[data-theme='day'] {
+  --color-bg: #eef1f8;
+  --color-surface: #ffffff;
+  --color-surface-2: #e2e7f3;
+  --color-text: #1e2140;
+  --color-text-muted: #5b5f80;
+  --color-light: #e9a43b;
+  --color-light-text: #2a2110;
+  --color-sofa: #7a4a8c;
+  --color-online: #2e9c7e;
+  --color-danger: #d14b63;
+}

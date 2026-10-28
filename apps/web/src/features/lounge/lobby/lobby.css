@@ -1,0 +1,307 @@
+.lobby {
+  display: flex;
+  flex-direction: column;
+}
+
+.lobby-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-8);
+}
+
+.lobby-title {
+  font-size: var(--text-28);
+}
+
+.title-link {
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.lobby-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.code-form {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.code-input {
+  width: 9rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.code-input::placeholder {
+  letter-spacing: 0;
+}
+
+/* 건물 외벽 */
+.building {
+  position: relative;
+  flex: 1;
+  margin: var(--space-6) var(--space-8) 0;
+  padding: var(--space-12) var(--space-8) var(--space-12);
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: var(--color-surface);
+}
+
+/* 옥상 난간 */
+.building::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: var(--space-3);
+  border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+  background: var(--color-surface-2);
+}
+
+.building-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: var(--space-8);
+}
+
+.filter-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-control);
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
+  cursor: pointer;
+}
+
+.filter-toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--color-light);
+}
+
+.window-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: var(--space-12) var(--space-8);
+}
+
+/* 창문 카드 */
+.window-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2);
+  border: 0;
+  border-radius: var(--radius-window);
+  background: none;
+  color: inherit;
+  text-align: center;
+  cursor: pointer;
+}
+
+.window {
+  --lit: 0.9;
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  border: 6px solid var(--color-surface-2);
+  border-radius: var(--radius-window);
+  background: var(--color-bg);
+}
+
+.window-glass {
+  position: absolute;
+  inset: 0;
+  background: var(--color-light);
+  opacity: var(--lit);
+}
+
+/* 창살 */
+.window::before,
+.window::after {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  background: var(--color-surface-2);
+}
+
+.window::before {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 6px;
+  transform: translateX(-50%);
+}
+
+.window::after {
+  top: 45%;
+  left: 0;
+  right: 0;
+  height: 6px;
+}
+
+.lit-1 {
+  --lit: 0.45;
+}
+
+.lit-2 {
+  --lit: 0.7;
+}
+
+.lit-3 {
+  --lit: 0.95;
+}
+
+/* 켜진 창문만 불빛 번짐 */
+.is-open .window,
+.is-game .window,
+.is-full .window {
+  box-shadow: 0 0 32px color-mix(in srgb, var(--color-light) calc(var(--lit) * 40%), transparent);
+}
+
+.is-game .window-glass {
+  background: linear-gradient(160deg, var(--color-light) 25%, var(--color-sofa) 100%);
+}
+
+/* 잠긴 방: 블라인드 */
+.is-locked .window-glass {
+  opacity: 1;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--color-surface-2) 0 6px,
+    var(--color-surface) 6px 12px
+  );
+}
+
+.window-lock {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-round);
+  background: var(--color-bg);
+  color: var(--color-danger);
+  transform: translate(-50%, -50%);
+}
+
+/* 불 꺼진 창문 */
+.is-dark {
+  cursor: default;
+}
+
+.is-dark .window-glass {
+  opacity: 1;
+  background: var(--color-bg);
+}
+
+.window-name {
+  margin-top: var(--space-2);
+  font-size: var(--text-20);
+  line-height: 1.3;
+}
+
+.window-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 100%;
+  font-size: var(--text-14);
+}
+
+.window-state,
+.is-full .window-count,
+.is-locked .window-count {
+  color: var(--color-text-muted);
+}
+
+.window-song {
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.window-game {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--text-12);
+  font-weight: 600;
+}
+
+.window-game-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-round);
+  background: var(--color-sofa);
+}
+
+.building-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.building-empty .window-grid {
+  width: 100%;
+}
+
+.building-empty-text {
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+/* 창문 → 방 전환용 덮개 */
+.window-zoom {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+}
+
+@media (max-width: 767px) {
+  .lobby-header {
+    padding: var(--space-4);
+  }
+
+  .lobby-title {
+    font-size: var(--text-20);
+  }
+
+  .code-input {
+    width: 8rem;
+  }
+
+  .building {
+    margin: var(--space-4) var(--space-4) 0;
+    padding: var(--space-8) var(--space-4);
+  }
+
+  .window-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-8) var(--space-4);
+  }
+}
