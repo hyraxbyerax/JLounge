@@ -18,6 +18,16 @@ export type YouTubePlayer = {
   stopVideo(): void;
   loadVideoById(videoId: string): void;
   getPlayerState(): number;
+  /** 지금 재생 위치(초) */
+  getCurrentTime(): number;
+  /** 영상 길이(초). 불러오기 전에는 0 */
+  getDuration(): number;
+  /** 재생 위치 옮기기(초). allowSeekAhead: 아직 안 받은 구간으로도 이동 */
+  seekTo(seconds: number, allowSeekAhead: boolean): void;
+  mute(): void;
+  unMute(): void;
+  /** 0~100 */
+  setVolume(volume: number): void;
   destroy(): void;
 };
 

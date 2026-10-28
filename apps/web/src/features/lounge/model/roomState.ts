@@ -52,6 +52,7 @@ export const HOST_COMMANDS = [
   { name: '/remove', usage: '/remove {번호}', description: '대기큐에서 빼기' },
   { name: '/move', usage: '/move {번호} {위치}', description: '대기큐 순서 바꾸기' },
   { name: '/clear', usage: '/clear', description: '대기큐 비우기' },
+  { name: '/endgame', usage: '/endgame', description: '진행 중인 게임 강제 종료' },
 ] as const;
 
 // 파일을 다시 불러와도(개발 중 화면 갱신 등) 이미 있는 메시지와 ID가 겹치지 않게 앞에 무작위 글자를 붙인다
@@ -163,12 +164,13 @@ function runCommand(state: RoomState, text: string, isHost: boolean): RoomState 
         system(next ? `다음 곡: ${next.title}` : '방장이 곡을 넘겼어요. 다음 곡이 없어요'),
       );
     }
+    // 일시정지·재개는 화면(TV의 일시정지 표시)으로 충분해서 채팅에 시스템 메시지를 남기지 않는다
     case '/pause':
       if (!state.now || state.paused) return withMessages(state, notice('일시정지할 곡이 없어요'));
-      return withMessages({ ...state, paused: true }, system('방장이 음악을 일시정지했어요'));
+      return { ...state, paused: true };
     case '/resume':
       if (!state.now || !state.paused) return withMessages(state, notice('다시 재생할 곡이 없어요'));
-      return withMessages({ ...state, paused: false }, system('음악을 다시 재생해요'));
+      return { ...state, paused: false };
     case '/stop':
       if (!state.now) return withMessages(state, notice('재생 중인 곡이 없어요'));
       return withMessages({ ...state, now: null, paused: false }, system('방장이 음악을 멈췄어요'));
@@ -193,6 +195,9 @@ function runCommand(state: RoomState, text: string, isHost: boolean): RoomState 
     case '/clear':
       if (queue.length === 0) return withMessages(state, notice('대기큐가 이미 비어 있어요'));
       return withMessages({ ...state, queue: [] }, system('방장이 대기큐를 비웠어요'));
+    case '/endgame':
+      // 게임이 열려 있으면 방(Room)이 이 명령을 먼저 처리한다. 여기까지 오면 게임이 없는 것
+      return withMessages(state, notice('진행 중인 게임이 없어요'));
   }
 }
 

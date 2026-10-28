@@ -19,35 +19,54 @@ export function CatchMindPanel({ controller, isHost, nicknameOf }: Props) {
   return (
     <section className="game" aria-label="캐치마인드">
       {game.phase === 'waiting' && (
-        <>
-          <header className="game-head">
-            <h2 className="game-title">캐치마인드</h2>
-          </header>
-          <ul className="game-rules">
-            <li>{game.totalRounds}라운드 동안 돌아가며 그려요. 나머지는 채팅으로 맞혀요</li>
-            <li>
-              라운드마다 {CATCHMIND_RULES.roundMs / 1000}초, {CATCHMIND_RULES.hintAtRemainingMs / 1000}초 남으면 첫
-              글자를 알려줘요
-            </li>
-            <li>
-              맞히면 {CATCHMIND_RULES.guessPoints}점 + 빨리 맞힐수록 최대 {CATCHMIND_RULES.speedBonusMax}점, 그린 사람은{' '}
-              {CATCHMIND_RULES.drawerPoints}점
-            </li>
-          </ul>
-          <p className="game-players">참가자: {game.players.map(nicknameOf).join(', ')}</p>
+        <div className="game-lobby">
+          <div className="game-lobby-head">
+            <h2 className="game-lobby-title">캐치마인드</h2>
+            <p className="game-lobby-sub">한 사람이 그리고, 나머지가 채팅으로 맞혀요</p>
+          </div>
+          <dl className="game-rules">
+            <div className="rule-row">
+              <dt>라운드</dt>
+              <dd>{game.totalRounds}라운드 · 돌아가며 그려요</dd>
+            </div>
+            <div className="rule-row">
+              <dt>시간</dt>
+              <dd>
+                라운드마다 {CATCHMIND_RULES.roundMs / 1000}초 · {CATCHMIND_RULES.hintAtRemainingMs / 1000}초 남으면 첫
+                글자 힌트
+              </dd>
+            </div>
+            <div className="rule-row">
+              <dt>점수</dt>
+              <dd>
+                맞히면 {CATCHMIND_RULES.guessPoints}점 + 빠를수록 최대 {CATCHMIND_RULES.speedBonusMax}점 · 그린 사람{' '}
+                {CATCHMIND_RULES.drawerPoints}점
+              </dd>
+            </div>
+          </dl>
+          <div className="game-lobby-players">
+            <span className="game-lobby-label">참가자 {game.players.length}명</span>
+            <ul className="player-chips">
+              {game.players.map((id) => (
+                <li key={id} className="player-chip">
+                  {nicknameOf(id)}
+                </li>
+              ))}
+            </ul>
+          </div>
           {isHost ? (
             <div className="game-actions">
               <button type="button" className="btn btn-primary" onClick={controller.start}>
                 시작하기
               </button>
-              <button type="button" className="btn btn-ghost" onClick={controller.quit}>
+              <button type="button" className="btn btn-ghost" onClick={() => controller.quit()}>
                 게임 닫기
               </button>
             </div>
           ) : (
-            <p className="muted">방장이 시작하기를 기다리고 있어요</p>
+            <p className="game-lobby-sub">방장이 시작하기를 기다리고 있어요</p>
           )}
-        </>
+        </div>
       )}
 
       {game.phase === 'playing' && (
@@ -89,10 +108,10 @@ export function CatchMindPanel({ controller, isHost, nicknameOf }: Props) {
       )}
 
       {game.phase === 'result' && (
-        <>
-          <header className="game-head">
-            <h2 className="game-title">결과</h2>
-          </header>
+        <div className="game-lobby">
+          <div className="game-lobby-head">
+            <h2 className="game-lobby-title">결과</h2>
+          </div>
           <ol className="ranking">
             {rankPlayers(game).map((r) => (
               <li key={r.userId} className={`ranking-item${r.rank === 1 ? ' is-first' : ''}`}>
@@ -107,12 +126,12 @@ export function CatchMindPanel({ controller, isHost, nicknameOf }: Props) {
               <button type="button" className="btn btn-primary" onClick={controller.start}>
                 한 판 더
               </button>
-              <button type="button" className="btn btn-ghost" onClick={controller.quit}>
+              <button type="button" className="btn btn-ghost" onClick={() => controller.quit()}>
                 게임 끝내기
               </button>
             </div>
           )}
-        </>
+        </div>
       )}
     </section>
   );
@@ -126,12 +145,15 @@ function BoardWithTools({ controller }: { controller: CatchMindController }) {
 
   return (
     <div className="board-area">
-      <DrawingBoard
-        strokes={controller.strokes}
-        canDraw={controller.canDraw}
-        pen={pen}
-        onStroke={controller.addStroke}
-      />
+      {/* 남은 공간 안에서 8:5 비율로 최대한 크게 */}
+      <div className="board-frame">
+        <DrawingBoard
+          strokes={controller.strokes}
+          canDraw={controller.canDraw}
+          pen={pen}
+          onStroke={controller.addStroke}
+        />
+      </div>
       {controller.canDraw && (
         <div className="draw-tools" role="toolbar" aria-label="그리기 도구">
           <div className="tool-group">

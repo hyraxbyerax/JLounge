@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
+import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
 import { useTimeouts } from '../../../shared/hooks/useTimeouts';
 import { LockIcon } from '../../../shared/ui/icons';
 import { Toast, useNotice } from '../../../shared/ui/Toast';
@@ -11,11 +12,11 @@ import { joinMembers, ME, transferHost, type Member, type RoomInfo, type RoomSet
 import { createRoomState, roomReducer, type MusicSnapshot, type PostedMessage } from '../model/roomState';
 import { ChatPanel } from './ChatPanel';
 import { MemberList } from './MemberList';
-import { MusicBar } from './MusicBar';
+import { LoungeTV } from './LoungeTV';
+import { MusicBar, type HostMusicCommand } from './MusicBar';
 import { CommandHelp, QueueList } from './QueueList';
 import { RoomSettingsDialog } from './RoomSettingsDialog';
 import { SongSearchDialog } from './SongSearchDialog';
-import { Stage } from './Stage';
 import './room.css';
 
 type Props = {
@@ -53,6 +54,11 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
   const [membersOpen, setMembersOpen] = useState(true);
   const [menuOpen, setMenuOpen] = useState(false);
   const [tab, setTab] = useState<Tab>('chat');
+  // 내 소리만 끄기·음량 (나에게만 적용)
+  const [player, setPlayer] = useState<YouTubePlayer | null>(null);
+  const [muted, setMuted] = useState(false);
+  const [volume, setVolume] = useState(80);
+  const [blocked, setBlocked] = useState(false);
   const later = useTimeouts();
 
   const host = members.find((m) => m.isHost) ?? members[0]!;
@@ -98,6 +104,12 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
   function send(text: string) {
     const trimmed = text.trim();
     const isCommand = trimmed.startsWith('/');
+
+    // 게임 강제 종료 (방장만). 방장이 아니거나 게임이 없으면 아래 명령어 처리에서 안내한다
+    if (trimmed.split(/\s+/)[0] === '/endgame' && isHost && game) {
+      catchmind.quit(true);
+      return;
+    }
 
     if (!isCommand && playing) {
       const result = catchmind.guess(ME.id, trimmed);
@@ -197,27 +209,54 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
     </header>
   );
 
-  const stage = (
-    <Stage
-      now={state.now}
-      paused={state.paused}
-      game={game ? <CatchMindPanel controller={catchmind} isHost={isHost} nicknameOf={nicknameOf} /> : null}
-      onSongEnded={(entryId) => dispatch({ type: 'ended', entryId })}
-      onSongError={(entryId) => dispatch({ type: 'failed', entryId })}
-    />
-  );
+  const gamePanel = game ? <CatchMindPanel controller={catchmind} isHost={isHost} nicknameOf={nicknameOf} /> : null;
 
   const cancel = (entryId: string) => dispatch({ type: 'cancel', entryId });
+  const changeVolume = (v: number) => {
+    setVolume(v);
+    setMuted(v === 0);
+  };
+  // 영상과 미니 음악 바는 같이 나오지 않는다: 평소엔 TV 아래 리모컨, 게임 중엔 헤더 옆 미니 위젯
   const musicBar = (
     <MusicBar
       now={state.now}
       paused={state.paused}
       queue={state.queue}
       isHost={isHost}
+      variant={game ? 'mini' : 'remote'}
       compact={isMobile}
+      player={player}
+      blocked={blocked}
+      muted={muted}
+      onMutedChange={setMuted}
+      onHostCommand={(command: HostMusicCommand) => dispatch({ type: 'send', text: command, isHost })}
       onRequest={() => setDialog('song')}
       onCancel={cancel}
     />
+  );
+
+  // 라운지 TV는 하나만 두고 보이기만 바꾼다 (게임 중: 화면 밖에서 소리만). 다시 만들면 음악이 끊긴다
+  const tv = (
+    <div className={`room-tv${game ? ' is-offscreen' : ''}`}>
+      <div className="tv-set">
+        <LoungeTV
+          now={state.now}
+          paused={state.paused}
+          hidden={game !== null}
+          muted={muted}
+          volume={volume}
+          onMutedChange={setMuted}
+          onVolumeChange={changeVolume}
+          isHost={isHost}
+          onTogglePause={() => dispatch({ type: 'send', text: state.paused ? '/resume' : '/pause', isHost })}
+          onPlayer={setPlayer}
+          onBlockedChange={setBlocked}
+          onEnded={(entryId) => dispatch({ type: 'ended', entryId })}
+          onError={(entryId) => dispatch({ type: 'failed', entryId })}
+        />
+        {!game && musicBar}
+      </div>
+    </div>
   );
 
   let chatPlaceholder: string | undefined;
@@ -231,9 +270,12 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
     <div className={`room${isMobile ? ' is-mobile' : ''}`}>
       {isMobile ? (
         <>
-          {header}
-          {stage}
-          {musicBar}
+          <div className={`room-main${game ? ' in-game' : ''}`}>
+            {header}
+            {game && musicBar}
+            {tv}
+            {gamePanel && <div className="room-game">{gamePanel}</div>}
+          </div>
           <div className="room-tabs" role="tablist">
             {TABS.map((t) => (
               <button
@@ -265,10 +307,11 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
         </>
       ) : (
         <>
-          <div className="room-main">
+          <div className={`room-main${game ? ' in-game' : ''}`}>
             {header}
-            {stage}
-            {musicBar}
+            {game && musicBar}
+            {tv}
+            {gamePanel && <div className="room-game">{gamePanel}</div>}
           </div>
           <aside className="room-side">
             <div className="members">

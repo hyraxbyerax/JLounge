@@ -5,11 +5,91 @@
   background: var(--color-bg);
 }
 
+/*
+ * 방 왼쪽 영역: 상단 [헤더 / 음악 바], 그 아래 무대.
+ * - 평소: 무대에 라운지 TV를 크게
+ * - 게임 중: 음악 바는 헤더 옆 작은 위젯, 영상은 화면 밖(소리만), 나머지는 게임 창이 전부 쓴다
+ * TV 요소는 하나만 두고 보이기만 바꿔서 음악이 끊기지 않게 한다.
+ */
 .room-main {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'header'
+    'stage';
   min-width: 0;
   min-height: 0;
+}
+
+.room-main > .room-header {
+  grid-area: header;
+}
+
+.room-main > .music-bar {
+  grid-area: bar;
+}
+
+/* 평소: TV는 가로 가운데, 세로는 헤더 바로 아래 (채팅과 윗선을 맞춘다) */
+.room-tv {
+  display: flex;
+  grid-area: stage;
+  align-items: flex-start;
+  justify-content: center;
+  min-height: 0;
+  padding: var(--space-2) var(--space-6) var(--space-6);
+}
+
+.room-game {
+  display: flex;
+  grid-area: game;
+  min-width: 0;
+  min-height: 0;
+  padding: var(--space-4) var(--space-6) var(--space-6);
+}
+
+.room-main.in-game {
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    'header bar'
+    'game game';
+}
+
+.room-main.in-game > .music-bar {
+  align-self: center;
+  margin: var(--space-4) var(--space-6) 0 0;
+}
+
+.room-main.in-game .room-game {
+  padding-top: var(--space-2);
+}
+
+/* 화면이 좁으면 음악 위젯을 헤더 아래 줄로 */
+@media (max-width: 1279px) {
+  .room-main.in-game {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: auto auto minmax(0, 1fr);
+    grid-template-areas:
+      'header'
+      'bar'
+      'game';
+  }
+
+  .room-main.in-game > .music-bar {
+    justify-self: end;
+    margin: 0 var(--space-6);
+  }
+}
+
+/* 게임 중: 영상은 화면 밖에 두고 소리만 계속 낸다 (플레이어를 없애면 음악이 끊긴다) */
+.room-tv.is-offscreen {
+  position: fixed;
+  top: 0;
+  left: -10000px;
+  width: 380px;
+  padding: 0;
+  pointer-events: none;
 }
 
 /* 상단 */
@@ -54,34 +134,20 @@
   background: var(--color-surface);
 }
 
-/* 무대 */
-.stage {
+/* 라운지 TV: 화면 + 아래 리모컨(음악 조작)이 하나의 물건 */
+.tv-set {
   display: flex;
-  flex: 1;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-6);
-  min-height: 0;
-  padding: var(--space-4) var(--space-6) var(--space-6);
-}
-
-.stage.is-game {
-  align-items: stretch;
-}
-
-/* 라운지 TV */
-.tv {
-  width: min(100%, 880px, calc((100vh - 240px) * 16 / 9));
+  flex-direction: column;
+  gap: var(--space-3);
+  width: min(100%, 880px, calc((100vh - 300px) * 16 / 9));
   padding: var(--space-3);
   border: 1px solid var(--color-surface-2);
   border-radius: var(--radius-panel);
   background: var(--color-surface);
 }
 
-.tv.is-small {
-  flex: none;
-  align-self: flex-start;
-  width: 380px;
+.tv {
+  width: 100%;
 }
 
 .tv-screen {
@@ -108,27 +174,26 @@
   text-align: center;
 }
 
-.tv-caption {
-  margin-top: var(--space-2);
-  color: var(--color-text-muted);
-  font-size: var(--text-12);
-  text-align: center;
-}
-
-/* 음악 바 */
+/* 음악 조작 — 기본(remote): TV 화면 아래 리모컨 */
 .music-bar {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-6);
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-1) 0;
   border-top: 1px solid var(--color-surface-2);
-  background: var(--color-surface);
+}
+
+.music-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2) var(--space-3);
 }
 
 .music-now {
   display: flex;
-  flex: 1;
+  flex: 1 1 240px;
   align-items: baseline;
   gap: var(--space-2);
   min-width: 0;
@@ -158,12 +223,180 @@
   font-size: var(--text-14);
 }
 
-.music-popover {
+.music-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.music-group {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.music-group .icon-btn {
+  font-size: var(--text-14);
+}
+
+.volume-slider {
+  width: 96px;
+  accent-color: var(--color-light);
+}
+
+.music-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.progress-track {
+  position: relative;
+  flex: 1;
+  height: 4px;
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  background: var(--color-surface-2);
+}
+
+.progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--color-light);
+  transition: width 500ms linear;
+}
+
+.progress-time {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  font-variant-numeric: tabular-nums;
+}
+
+/* 방장용 진행 막대: 끌어서 재생 위치를 옮긴다. 터치·클릭 영역은 넉넉하게, 보이는 막대는 얇게 */
+.seek-slider {
+  flex: 1;
+  height: 24px;
+  margin: 0;
+  background: transparent;
+  cursor: pointer;
+  appearance: none;
+}
+
+.seek-slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--radius-round);
+  background: linear-gradient(to right, var(--color-light) var(--seek), var(--color-surface-2) var(--seek));
+}
+
+.seek-slider::-moz-range-track {
+  height: 4px;
+  border-radius: var(--radius-round);
+  background: linear-gradient(to right, var(--color-light) var(--seek), var(--color-surface-2) var(--seek));
+}
+
+.seek-slider::-webkit-slider-thumb {
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-light);
+  appearance: none;
+}
+
+.seek-slider::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border: 0;
+  border-radius: var(--radius-round);
+  background: var(--color-light);
+}
+
+/* TV 리모컨(평소): 곡 정보 → 버튼 → 재생 위치를 위아래로 쌓고 모두 가운데 정렬 */
+.music-bar:not(.is-mini) .music-row {
+  flex-direction: column;
+  align-items: center;
+}
+
+.music-bar:not(.is-mini) .music-now {
+  flex: none;
+  justify-content: center;
+  max-width: 100%;
+}
+
+.music-bar:not(.is-mini) .music-controls {
+  justify-content: center;
+}
+
+.music-bar:not(.is-mini) .music-progress {
+  width: min(100%, 560px);
+  margin: 0 auto;
+}
+
+.music-bar:not(.is-mini) .music-popover {
+  right: auto;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* 자동 재생이 막혔을 때 */
+.music-unblock {
+  animation: rise-in 200ms ease-out;
+}
+
+/* 게임 중 작은 위젯: 한 줄, 진행선은 아래 테두리에 얇게 */
+.music-bar.is-mini {
+  flex-direction: row;
+  gap: 0;
+  max-width: 560px;
+  margin: 0;
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-round);
+  background: var(--color-surface);
+}
+
+.music-bar.is-mini .music-row {
+  flex-wrap: nowrap;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.music-bar.is-mini .music-now {
+  flex: 1 1 auto;
+  max-width: 220px;
+  font-size: var(--text-14);
+}
+
+.music-bar.is-mini .music-controls {
+  flex-wrap: nowrap;
+  gap: var(--space-1);
+}
+
+.music-bar.is-mini .btn {
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-round);
+}
+
+.music-progress-line {
   position: absolute;
   right: var(--space-6);
-  bottom: calc(100% + var(--space-2));
+  bottom: 0;
+  left: var(--space-6);
+}
+
+.music-progress-line .progress-track {
+  height: 2px;
+}
+
+.music-popover {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: var(--space-4);
   z-index: 10;
-  width: min(420px, calc(100% - var(--space-12)));
+  width: min(420px, calc(100% - var(--space-8)));
   max-height: 360px;
   overflow-y: auto;
   padding: var(--space-3);
@@ -455,23 +688,31 @@ code {
   font-size: var(--text-20);
 }
 
-.room.is-mobile .stage {
-  flex: none;
-  padding: var(--space-2) var(--space-4);
-}
-
-.room.is-mobile .stage.is-game {
+.room.is-mobile .room-main,
+.room.is-mobile .room-main.in-game {
+  display: flex;
   flex-direction: column;
 }
 
-.room.is-mobile .tv,
-.room.is-mobile .tv.is-small {
+.room.is-mobile .room-tv,
+.room.is-mobile .room-main.in-game .room-tv {
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+}
+
+.room.is-mobile .tv-set {
   width: 100%;
   padding: var(--space-2);
 }
 
-.room.is-mobile .music-bar {
-  padding: var(--space-2) var(--space-4);
+.room.is-mobile .room-game {
+  padding: 0 var(--space-4) var(--space-2);
+}
+
+.room.is-mobile .music-bar.is-mini {
+  max-width: none;
+  margin: 0 var(--space-4);
+  border-radius: var(--radius-panel);
 }
 
 .room-tabs {
@@ -543,11 +784,65 @@ code {
   background: var(--color-bg);
 }
 
+/* 영상 위의 모든 반응(마우스 올리기·클릭)을 막는 투명한 덮개. 유튜브 자체 버튼도 꺼져 있다 */
+.tv-shield {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+/* 일시정지 중: 유튜브의 멈춤 화면을 가리는 우리 화면 */
+.tv-paused {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-bg);
+  text-align: center;
+}
+
+.tv-paused-icon {
+  color: var(--color-light);
+  font-size: var(--text-40);
+  line-height: 1;
+}
+
+.tv-paused-text {
+  color: var(--color-text-muted);
+  font-size: var(--text-16);
+}
+
 .tv-play {
   position: absolute;
   bottom: var(--space-4);
   left: 50%;
+  z-index: 2;
   transform: translateX(-50%);
+}
+
+/* 화면 오른쪽 아래: 내 음량 (방장은 일시정지·재생도) — 영상 위에서 쓸 수 있는 것은 이것뿐 */
+.tv-overlay {
+  position: absolute;
+  right: var(--space-3);
+  bottom: var(--space-3);
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1);
+  border-radius: var(--radius-round);
+  background: color-mix(in srgb, var(--color-bg) 70%, transparent);
+}
+
+.tv-overlay .icon-btn {
+  width: 36px;
+  height: 36px;
+  font-size: var(--text-14);
 }
 
 /* 곡 검색 */

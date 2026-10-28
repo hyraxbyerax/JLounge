@@ -137,12 +137,16 @@ export function useCatchMind({ players, nicknameOf, post }: Options) {
     commit(step.state, step.events);
   }, [commit, players]);
 
-  const quit = useCallback(() => {
-    if (!gameRef.current) return;
-    commit(null);
-    setStrokes([]);
-    latest.current.post({ kind: 'system', text: '게임을 끝냈어요' });
-  }, [commit]);
+  /** 게임 닫기. forced: 방장이 진행 중에 /endgame 으로 강제 종료 */
+  const quit = useCallback(
+    (forced = false) => {
+      if (!gameRef.current) return;
+      commit(null);
+      setStrokes([]);
+      latest.current.post({ kind: 'system', text: forced ? '방장이 게임을 강제로 끝냈어요' : '게임을 끝냈어요' });
+    },
+    [commit],
+  );
 
   const toWaiting = useCallback(() => {
     if (gameRef.current) commit(backToWaiting(gameRef.current));

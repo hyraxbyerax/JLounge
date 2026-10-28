@@ -105,3 +105,27 @@ describe('채팅 제한', () => {
     expect(countsAsChat('   ')).toBe(false);
   });
 });
+
+describe('게임 강제 종료 명령어', () => {
+  it('방장이 아니면 쓸 수 없다', () => {
+    const s = roomReducer(createRoomState(), { type: 'send', text: '/endgame', isHost: false });
+    expect(lastText(s)).toBe('방장만 쓸 수 있는 명령어예요');
+  });
+
+  it('게임이 없을 때 방장이 쓰면 안내만 한다 (게임이 있으면 방이 먼저 처리)', () => {
+    const s = roomReducer(createRoomState(), { type: 'send', text: '/endgame', isHost: true });
+    expect(lastText(s)).toBe('진행 중인 게임이 없어요');
+  });
+});
+
+describe('일시정지·재개', () => {
+  it('채팅에 시스템 메시지를 남기지 않는다', () => {
+    const s = withSongs(1);
+    const before = s.messages.length;
+    const paused = roomReducer(s, { type: 'send', text: '/pause', isHost: true });
+    const resumed = roomReducer(paused, { type: 'send', text: '/resume', isHost: true });
+    expect(paused.paused).toBe(true);
+    expect(resumed.paused).toBe(false);
+    expect(resumed.messages.length).toBe(before);
+  });
+});
