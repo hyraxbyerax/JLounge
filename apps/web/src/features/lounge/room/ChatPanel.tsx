@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { ME, type ChatMessage } from '../model/room';
-import { HOST_COMMANDS } from '../model/roomState';
+import { chatCooldownLeft, countsAsChat, HOST_COMMANDS } from '../model/roomState';
 
 type Props = {
   messages: ChatMessage[];
@@ -19,6 +19,21 @@ export function ChatPanel({ messages, isHost, placeholder, onSend }: Props) {
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLOListElement>(null);
   const listboxId = useId();
+  // 채팅을 보내면 3초 동안 다음 채팅을 못 보낸다. 입력은 미리 해둘 수 있다
+  const [lastSentAt, setLastSentAt] = useState<number | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const cooldownMs = chatCooldownLeft(lastSentAt, now);
+  const coolingDown = cooldownMs > 0;
+
+  useEffect(() => {
+    if (lastSentAt === null) return;
+    const id = window.setInterval(() => {
+      const t = Date.now();
+      setNow(t);
+      if (chatCooldownLeft(lastSentAt, t) === 0) window.clearInterval(id);
+    }, 200);
+    return () => window.clearInterval(id);
+  }, [lastSentAt]);
 
   useEffect(() => {
     const el = listRef.current;
@@ -52,9 +67,18 @@ export function ChatPanel({ messages, isHost, placeholder, onSend }: Props) {
   function submit(e: FormEvent) {
     e.preventDefault();
     if (!text.trim()) return;
+    const isChat = countsAsChat(text);
+    if (isChat && coolingDown) return;
     onSend(text);
     setText('');
+    if (isChat) {
+      const t = Date.now();
+      setLastSentAt(t);
+      setNow(t);
+    }
   }
+
+  const blocked = coolingDown && countsAsChat(text);
 
   return (
     <section className="chat" aria-label="채팅">
@@ -105,8 +129,13 @@ export function ChatPanel({ messages, isHost, placeholder, onSend }: Props) {
           }}
           onKeyDown={onKeyDown}
         />
-        <button type="submit" className="btn btn-primary">
-          보내기
+        <button
+          type="submit"
+          className="btn btn-primary chat-send"
+          disabled={blocked}
+          aria-label={coolingDown ? `${Math.ceil(cooldownMs / 1000)}초 뒤에 보낼 수 있어요` : '보내기'}
+        >
+          {coolingDown ? `${Math.ceil(cooldownMs / 1000)}초` : '보내기'}
         </button>
       </form>
     </section>

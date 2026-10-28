@@ -1,10 +1,15 @@
 import { createServer } from 'node:http';
 import { createApp } from './app.ts';
 import { registerLoungeHandlers } from './modules/lounge/index.ts';
+import { createSampleSearch } from './modules/lounge/music/sampleSearch.ts';
+import { withSearchCache } from './modules/lounge/music/search.ts';
+import { createYouTubeSearch } from './modules/lounge/music/youtubeSearch.ts';
+import { loungeRouter } from './modules/lounge/routes.ts';
 import { createLocalAuth } from './shared/auth/localAuth.ts';
 import { loadConfig } from './shared/config.ts';
 import { createPool } from './shared/db/pool.ts';
 import { createLogger } from './shared/logger.ts';
+import { redisCounter } from './shared/rateLimit.ts';
 import { createSocketServer } from './shared/realtime/socket.ts';
 import { connectRedis } from './shared/redis.ts';
 
@@ -14,6 +19,13 @@ const logger = createLogger(config.LOG_LEVEL);
 const redis = await connectRedis(config.REDIS_URL, logger);
 const db = createPool(config.DATABASE_URL, logger);
 const auth = createLocalAuth(config.AUTH_SECRET);
+
+const musicSearch = withSearchCache(
+  config.YOUTUBE_API_KEY ? createYouTubeSearch(config.YOUTUBE_API_KEY) : createSampleSearch(),
+  redis.client,
+  config.SEARCH_CACHE_TTL_SEC,
+);
+logger.info('곡 검색 준비', { source: musicSearch.source });
 
 let shuttingDown = false;
 
@@ -30,6 +42,7 @@ const app = createApp({
   },
   isShuttingDown: () => shuttingDown,
   logger,
+  lounge: loungeRouter({ auth, musicSearch, counter: redisCounter(redis.client) }),
 });
 
 const httpServer = createServer(app);

@@ -22,6 +22,17 @@ const schema = z.object({
         .map((s) => s.trim())
         .filter(Boolean),
     ),
+  /** 유튜브 Data API v3 키. 없으면 예시 곡만 검색된다 */
+  YOUTUBE_API_KEY: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined),
+  /** 같은 검색어 결과를 Redis에 저장해 두는 시간 (기본 6시간) */
+  SEARCH_CACHE_TTL_SEC: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(6 * 60 * 60),
   /** SIGTERM 후 연결을 정리하며 기다리는 최대 시간 */
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
 });

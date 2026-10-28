@@ -27,6 +27,21 @@ export type RoomAction =
   | { type: 'failed'; entryId: string };
 
 export const MAX_SONGS_PER_USER = 3;
+
+/** 채팅을 보내면 이 시간 동안 다음 채팅을 보낼 수 없다 (도배·캐치마인드 연타 방지). 명령어(/)는 예외 */
+export const CHAT_COOLDOWN_MS = 3000;
+
+/** 다음 채팅까지 남은 시간(ms). 0이면 바로 보낼 수 있다 */
+export function chatCooldownLeft(lastSentAt: number | null, now: number): number {
+  if (lastSentAt === null) return 0;
+  return Math.max(0, lastSentAt + CHAT_COOLDOWN_MS - now);
+}
+
+/** 이 메시지가 채팅 제한을 받는지 (명령어는 채팅에 남지 않으므로 제한하지 않는다) */
+export function countsAsChat(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.length > 0 && !trimmed.startsWith('/');
+}
 const MAX_MESSAGES = 200;
 
 export const HOST_COMMANDS = [
@@ -39,8 +54,10 @@ export const HOST_COMMANDS = [
   { name: '/clear', usage: '/clear', description: '대기큐 비우기' },
 ] as const;
 
+// 파일을 다시 불러와도(개발 중 화면 갱신 등) 이미 있는 메시지와 ID가 겹치지 않게 앞에 무작위 글자를 붙인다
+const idPrefix = Math.random().toString(36).slice(2, 8);
 let seq = 0;
-const nextId = () => `m${++seq}`;
+const nextId = () => `${idPrefix}-${++seq}`;
 const nowIso = () => new Date().toISOString();
 
 const system = (text: string): ChatMessage => ({ id: nextId(), kind: 'system', text, sentAt: nowIso() });

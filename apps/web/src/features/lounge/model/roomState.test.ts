@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import type { Song } from './room';
-import { createRoomState, roomReducer, type RoomState } from './roomState';
+import {
+  CHAT_COOLDOWN_MS,
+  chatCooldownLeft,
+  countsAsChat,
+  createRoomState,
+  roomReducer,
+  type RoomState,
+} from './roomState';
 
 const song = (n: number): Song => ({ videoId: `v${n}`, title: `곡${n}`, durationSec: 200 });
 const lastText = (s: RoomState) => s.messages.at(-1)?.text;
@@ -81,5 +88,20 @@ describe('방장 명령어', () => {
     const s = roomReducer(withSongs(1), { type: 'send', text: '/pause', isHost: true });
     expect(s.messages.some((m) => m.kind === 'user')).toBe(false);
     expect(s.paused).toBe(true);
+  });
+});
+
+describe('채팅 제한', () => {
+  it('보낸 뒤 3초 동안은 기다려야 한다', () => {
+    expect(chatCooldownLeft(null, 1000)).toBe(0);
+    expect(chatCooldownLeft(1000, 1000)).toBe(CHAT_COOLDOWN_MS);
+    expect(chatCooldownLeft(1000, 2500)).toBe(1500);
+    expect(chatCooldownLeft(1000, 1000 + CHAT_COOLDOWN_MS)).toBe(0);
+  });
+
+  it('명령어와 빈 메시지는 채팅 제한을 받지 않는다', () => {
+    expect(countsAsChat('사과')).toBe(true);
+    expect(countsAsChat('  /skip ')).toBe(false);
+    expect(countsAsChat('   ')).toBe(false);
   });
 });
