@@ -7,10 +7,8 @@ const apps = [
 ];
 
 const children = apps.map(({ name, workspace }) => {
-  const child = spawn('npm', ['run', 'dev', '-w', workspace], {
-    stdio: ['ignore', 'pipe', 'pipe'],
-    shell: process.platform === 'win32',
-  });
+  // Windows에서는 npm이 npm.cmd라 셸로 실행한다 (명령을 한 문자열로 넘겨야 경고가 없다)
+  const child = spawn(`npm run dev -w ${workspace}`, { stdio: ['ignore', 'pipe', 'pipe'], shell: true });
   const prefix = `[${name}] `;
   const relay = (stream, out) => {
     let rest = '';

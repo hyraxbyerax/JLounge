@@ -4,7 +4,7 @@ services:
   valkey:
     image: valkey/valkey:8
     ports:
-      - '6379:6379'
+      - '${VALKEY_PORT:-6379}:6379'
     volumes:
       - valkey-data:/data
     healthcheck:
@@ -20,7 +20,8 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env에 POSTGRES_PASSWORD를 설정해주세요}
       POSTGRES_DB: ${POSTGRES_DB:?.env에 POSTGRES_DB를 설정해주세요}
     ports:
-      - '5432:5432'
+      # Windows는 5336~5835 포트를 예약해 둘 때가 있어서 컴퓨터 쪽 포트 기본값을 15432로 둔다
+      - '${POSTGRES_PORT:-15432}:5432'
     volumes:
       # PostgreSQL 18 이미지는 /var/lib/postgresql 아래에 버전별 폴더를 만든다
       - postgres-data:/var/lib/postgresql
