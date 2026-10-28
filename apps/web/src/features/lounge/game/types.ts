@@ -25,4 +25,6 @@ export function rankPlayers(game: GameCommon): RankEntry[] {
   return sorted.map((entry) => ({ ...entry, rank: sorted.findIndex((e) => e.score === entry.score) + 1 }));
 }
 
-export const GAME_CATALOG = [{ type: 'catchmind', name: '캐치마인드', description: '한 사람이 그리고, 나머지가 채팅으로 맞혀요' }] as const;
+export const GAME_CATALOG = [
+  { type: 'catchmind', name: '캐치마인드', description: '한 사람이 그리고, 나머지가 채팅으로 맞혀요' },
+] as const;

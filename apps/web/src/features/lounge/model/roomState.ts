@@ -21,7 +21,10 @@ export type RoomAction =
   | { type: 'send'; text: string; isHost: boolean }
   | { type: 'post'; message: PostedMessage }
   | { type: 'request'; song: Song }
-  | { type: 'cancel'; entryId: string };
+  | { type: 'cancel'; entryId: string }
+  /** 곡이 끝남 / 재생할 수 없는 영상. 지금 곡이 아직 그 곡일 때만 다음 곡으로 (중복 전환 방지) */
+  | { type: 'ended'; entryId: string }
+  | { type: 'failed'; entryId: string };
 
 export const MAX_SONGS_PER_USER = 3;
 const MAX_MESSAGES = 200;
@@ -75,6 +78,16 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
       return withMessages(state, toMessage(action.message));
     case 'request':
       return requestSong(state, action.song);
+    case 'ended':
+    case 'failed': {
+      if (state.now?.entryId !== action.entryId) return state;
+      const [next, ...rest] = state.queue;
+      const reason = action.type === 'failed' ? `'${state.now.title}'은(는) 재생할 수 없어서 넘어가요. ` : '';
+      return withMessages(
+        { ...state, now: next ?? null, queue: rest, paused: false },
+        system(next ? `${reason}다음 곡: ${next.title}` : `${reason}대기큐의 곡을 다 들었어요`),
+      );
+    }
     case 'cancel': {
       const target = state.queue.find((e) => e.entryId === action.entryId);
       if (!target || target.requesterId !== ME.id) {
@@ -117,7 +130,10 @@ function runCommand(state: RoomState, text: string, isHost: boolean): RoomState 
   const [name, ...args] = text.split(/\s+/);
   const command = HOST_COMMANDS.find((c) => c.name === name);
   if (!command) {
-    return withMessages(state, notice(`모르는 명령어예요. 쓸 수 있는 명령어: ${HOST_COMMANDS.map((c) => c.name).join(' ')}`));
+    return withMessages(
+      state,
+      notice(`모르는 명령어예요. 쓸 수 있는 명령어: ${HOST_COMMANDS.map((c) => c.name).join(' ')}`),
+    );
   }
   if (!isHost) return withMessages(state, notice('방장만 쓸 수 있는 명령어예요'));
 

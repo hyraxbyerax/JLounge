@@ -82,7 +82,9 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
     }
     if (firstMembers.some((m) => m.id === BOT.id)) return;
     later(() => {
-      setMembers((ms) => joinMembers(ms, { id: BOT.id, nickname: BOT.nickname, isHost: false, isFriend: false, isBot: true }));
+      setMembers((ms) =>
+        joinMembers(ms, { id: BOT.id, nickname: BOT.nickname, isHost: false, isFriend: false, isBot: true }),
+      );
       post({ kind: 'system', text: `${BOT.nickname}님이 들어왔어요` });
       botSay(BOT_LINES.greet, 1500);
     }, BOT_JOIN_DELAY_MS);
@@ -160,10 +162,7 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
     </>
   );
 
-  const badges = [
-    !room.isPublic && '비공개',
-    room.password !== null && '비밀번호',
-  ].filter(Boolean);
+  const badges = [!room.isPublic && '비공개', room.password !== null && '비밀번호'].filter(Boolean);
 
   const header = (
     <header className="room-header">
@@ -203,6 +202,8 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
       now={state.now}
       paused={state.paused}
       game={game ? <CatchMindPanel controller={catchmind} isHost={isHost} nicknameOf={nicknameOf} /> : null}
+      onSongEnded={(entryId) => dispatch({ type: 'ended', entryId })}
+      onSongError={(entryId) => dispatch({ type: 'failed', entryId })}
     />
   );
 

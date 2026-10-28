@@ -1,0 +1,35 @@
+# 로컬 개발용 Valkey(Redis 호환)·PostgreSQL. 값은 .env 에서 읽는다.
+#   docker compose up -d
+services:
+  valkey:
+    image: valkey/valkey:8
+    ports:
+      - '6379:6379'
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ['CMD', 'valkey-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?.env에 POSTGRES_USER를 설정해주세요}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?.env에 POSTGRES_PASSWORD를 설정해주세요}
+      POSTGRES_DB: ${POSTGRES_DB:?.env에 POSTGRES_DB를 설정해주세요}
+    ports:
+      - '5432:5432'
+    volumes:
+      # PostgreSQL 18 이미지는 /var/lib/postgresql 아래에 버전별 폴더를 만든다
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U "$${POSTGRES_USER}" -d "$${POSTGRES_DB}"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  valkey-data:
+  postgres-data:

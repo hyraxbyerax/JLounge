@@ -6,13 +6,13 @@
 - [ ] 서버 없이 가짜 데이터로 로비(창문)와 방 안 화면만 만들어 디자인 확인 → 확정되면 0단계로
 
 ## 0단계 · 프로젝트 뼈대
-- [ ] npm workspaces 모노레포 (`apps/web`, `apps/server`), TypeScript·ESLint·Prettier·Vitest 설정
-- [ ] `docker-compose.yml` (Valkey 8, PostgreSQL 18), `.env.example`, `config.ts`, `.nvmrc`(24)
-- [ ] 서버: Express + Socket.IO + Redis 어댑터, `GET /health`, SIGTERM 종료 처리, JSON 로그
-- [ ] DB 마이그레이션 도구와 `users` 테이블
-- [ ] 디자인 토큰 `tokens.css` (밤·낮 모드, SUIT·고운바탕 글꼴) — `docs/design.md` 기준
-- [ ] 화면: 메인(① 방 만들기 ② 스케줄 관리 "준비 중"), 공통 레이아웃, 소켓 클라이언트(자동 재접속)
-- [ ] `AuthProvider` 인터페이스 + 로컬 개발용 구현 (게스트 토큰, 간단한 로컬 로그인)
+- [x] npm workspaces 모노레포 (`apps/web`, `apps/server`), TypeScript·ESLint·Prettier·Vitest 설정
+- [ ] `docker-compose.yml` (Valkey 8, PostgreSQL 18), `.env.example`, `config.ts`, `.nvmrc`(24) — 작성 완료, Docker 설치 후 실행 확인
+- [ ] 서버: Express + Socket.IO + Redis 어댑터, `GET /health`, SIGTERM 종료 처리, JSON 로그 — 작성 완료, Docker 설치 후 실행 확인
+- [ ] DB 마이그레이션 도구와 `users` 테이블 — 작성 완료, Docker 설치 후 `npm run db:migrate` 확인
+- [x] 디자인 토큰 `tokens.css` (밤·낮 모드, SUIT·고운바탕 글꼴) — `docs/design.md` 기준
+- [x] 화면: 메인(① 방 만들기 ② 스케줄 관리 "준비 중"), 공통 레이아웃, 소켓 클라이언트(자동 재접속)
+- [x] `AuthProvider` 인터페이스 + 로컬 개발용 구현 (게스트 토큰, 간단한 로컬 로그인)
 
 ## 1단계 · 방과 채팅
 - [ ] 방 만들기 (공개/비공개, 비밀번호, 자물쇠, 최대 인원), 방 코드·초대 링크

@@ -68,7 +68,9 @@ export function useCatchMind({ players, nicknameOf, post }: Options) {
       const system = (text: string) => say({ kind: 'system', text });
       switch (event.type) {
         case 'started':
-          system(`캐치마인드를 시작해요! ${state.totalRounds}라운드, 라운드마다 ${CATCHMIND_RULES.roundMs / 1000}초예요`);
+          system(
+            `캐치마인드를 시작해요! ${state.totalRounds}라운드, 라운드마다 ${CATCHMIND_RULES.roundMs / 1000}초예요`,
+          );
           break;
         case 'roundStarted':
           setStrokes([]);
@@ -90,7 +92,9 @@ export function useCatchMind({ players, nicknameOf, post }: Options) {
         case 'finished': {
           const winners = event.ranking.filter((r) => r.rank === 1);
           const names = winners.map((w) => `${nick(w.userId)}님`).join(', ');
-          system(`게임이 끝났어요. ${winners.length > 1 ? '공동 1등' : '1등'}은 ${names} (${winners[0]?.score ?? 0}점)`);
+          system(
+            `게임이 끝났어요. ${winners.length > 1 ? '공동 1등' : '1등'}은 ${names} (${winners[0]?.score ?? 0}점)`,
+          );
           if (state.players.includes(BOT.id)) {
             const botWon = winners.some((w) => w.userId === BOT.id);
             botSay(winners.length > 1 ? BOT_LINES.tie : botWon ? BOT_LINES.won : BOT_LINES.lost, 1200);

@@ -182,11 +182,7 @@
 /* 잠긴 방: 블라인드 */
 .is-locked .window-glass {
   opacity: 1;
-  background: repeating-linear-gradient(
-    to bottom,
-    var(--color-surface-2) 0 6px,
-    var(--color-surface) 6px 12px
-  );
+  background: repeating-linear-gradient(to bottom, var(--color-surface-2) 0 6px, var(--color-surface) 6px 12px);
 }
 
 .window-lock {

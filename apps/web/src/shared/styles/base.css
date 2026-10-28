@@ -78,8 +78,7 @@ input {
     radial-gradient(1.5px 1.5px at 41% 9%, var(--color-text-muted) 50%, transparent 51%),
     radial-gradient(1px 1px at 63% 22%, var(--color-text-muted) 50%, transparent 51%),
     radial-gradient(1.5px 1.5px at 78% 6%, var(--color-text-muted) 50%, transparent 51%),
-    radial-gradient(1px 1px at 91% 27%, var(--color-text-muted) 50%, transparent 51%),
-    var(--color-bg);
+    radial-gradient(1px 1px at 91% 27%, var(--color-text-muted) 50%, transparent 51%), var(--color-bg);
   background-repeat: no-repeat;
   background-size: 100% 320px;
 }
@@ -300,4 +299,24 @@ input {
 
 .game-pick-name {
   font-weight: 600;
+}
+
+/* 연결 상태 안내 */
+.connection-banner-slot {
+  position: fixed;
+  top: var(--space-3);
+  left: 50%;
+  z-index: 70;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+
+.connection-banner {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-danger);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  font-size: var(--text-14);
+  white-space: nowrap;
+  animation: rise-in 200ms ease-out;
 }

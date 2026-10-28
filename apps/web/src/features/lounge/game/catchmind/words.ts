@@ -30,7 +30,11 @@ export function pickRandom<T>(items: readonly T[], random: () => number = Math.r
 }
 
 /** 아직 안 쓴 단어 중 하나. 다 썼으면 아무거나 */
-export function pickUnused(pool: readonly string[], used: readonly string[], random: () => number = Math.random): string {
+export function pickUnused(
+  pool: readonly string[],
+  used: readonly string[],
+  random: () => number = Math.random,
+): string {
   const fresh = pool.filter((w) => !used.includes(w));
   return pickRandom(fresh.length > 0 ? fresh : pool, random);
 }

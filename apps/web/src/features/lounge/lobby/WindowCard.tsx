@@ -48,8 +48,7 @@ export function WindowCard({ room, onOpen }: Props) {
             {room.game} 진행 중
           </span>
         ) : (
-          room.nowPlaying &&
-          state !== 'locked' && <span className="window-song">♪ {room.nowPlaying}</span>
+          room.nowPlaying && state !== 'locked' && <span className="window-song">♪ {room.nowPlaying}</span>
         )}
       </span>
     </button>

@@ -26,8 +26,8 @@ export function CatchMindPanel({ controller, isHost, nicknameOf }: Props) {
           <ul className="game-rules">
             <li>{game.totalRounds}라운드 동안 돌아가며 그려요. 나머지는 채팅으로 맞혀요</li>
             <li>
-              라운드마다 {CATCHMIND_RULES.roundMs / 1000}초, {CATCHMIND_RULES.hintAtRemainingMs / 1000}초 남으면 첫 글자를
-              알려줘요
+              라운드마다 {CATCHMIND_RULES.roundMs / 1000}초, {CATCHMIND_RULES.hintAtRemainingMs / 1000}초 남으면 첫
+              글자를 알려줘요
             </li>
             <li>
               맞히면 {CATCHMIND_RULES.guessPoints}점 + 빨리 맞힐수록 최대 {CATCHMIND_RULES.speedBonusMax}점, 그린 사람은{' '}
@@ -126,7 +126,12 @@ function BoardWithTools({ controller }: { controller: CatchMindController }) {
 
   return (
     <div className="board-area">
-      <DrawingBoard strokes={controller.strokes} canDraw={controller.canDraw} pen={pen} onStroke={controller.addStroke} />
+      <DrawingBoard
+        strokes={controller.strokes}
+        canDraw={controller.canDraw}
+        pen={pen}
+        onStroke={controller.addStroke}
+      />
       {controller.canDraw && (
         <div className="draw-tools" role="toolbar" aria-label="그리기 도구">
           <div className="tool-group">
@@ -164,7 +169,12 @@ function BoardWithTools({ controller }: { controller: CatchMindController }) {
             ))}
           </div>
           <div className="tool-group">
-            <button type="button" className="btn btn-ghost" aria-pressed={erasing} onClick={() => setErasing((v) => !v)}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              aria-pressed={erasing}
+              onClick={() => setErasing((v) => !v)}
+            >
               지우개
             </button>
             <button type="button" className="btn btn-ghost" onClick={controller.undo}>
@@ -180,7 +190,13 @@ function BoardWithTools({ controller }: { controller: CatchMindController }) {
   );
 }
 
-function Scoreboard({ controller, nicknameOf }: { controller: CatchMindController; nicknameOf: (id: string) => string }) {
+function Scoreboard({
+  controller,
+  nicknameOf,
+}: {
+  controller: CatchMindController;
+  nicknameOf: (id: string) => string;
+}) {
   const { game, view } = controller;
   if (!game || !view) return null;
   return (

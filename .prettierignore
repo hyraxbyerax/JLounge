@@ -1,0 +1,6 @@
+node_modules
+dist
+package-lock.json
+# 문서는 손으로 정리한 표가 있어 자동 정리하지 않는다
+*.md
+.claude

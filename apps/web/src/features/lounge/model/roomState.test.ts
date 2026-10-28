@@ -35,6 +35,28 @@ describe('곡 신청', () => {
   });
 });
 
+describe('다음 곡 전환', () => {
+  it('곡이 끝나면 대기큐 맨 앞 곡을 재생하고, 끝난 곡은 사라진다', () => {
+    const s = withSongs(1, 2, 3);
+    const next = roomReducer(s, { type: 'ended', entryId: s.now!.entryId });
+    expect(next.now?.videoId).toBe('v2');
+    expect(next.queue.map((e) => e.videoId)).toEqual(['v3']);
+  });
+
+  it('이미 넘어간 곡의 "끝남"이 또 와도 한 번만 넘어간다', () => {
+    const s = withSongs(1, 2, 3);
+    const once = roomReducer(s, { type: 'ended', entryId: s.now!.entryId });
+    const twice = roomReducer(once, { type: 'ended', entryId: s.now!.entryId });
+    expect(twice).toBe(once);
+  });
+
+  it('재생할 수 없는 영상이면 다음 곡으로, 대기큐가 비면 재생을 멈춘다', () => {
+    const s = withSongs(1);
+    const next = roomReducer(s, { type: 'failed', entryId: s.now!.entryId });
+    expect(next.now).toBeNull();
+  });
+});
+
 describe('방장 명령어', () => {
   it('방장이 아니면 실행되지 않는다', () => {
     const s = roomReducer(withSongs(1, 2), { type: 'send', text: '/skip', isHost: false });

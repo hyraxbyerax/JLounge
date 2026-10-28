@@ -9,8 +9,18 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "dev": "npm run dev -w @lounge/web",
-    "build": "npm run build -w @lounge/web",
-    "test": "npm run test --workspaces --if-present"
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "db:migrate": "npm run db:migrate -w @lounge/server"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.13.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript-eslint": "^8.72.1"
   }
 }

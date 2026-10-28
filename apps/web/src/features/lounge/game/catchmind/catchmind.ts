@@ -82,7 +82,13 @@ export function canStart(state: CatchMindState): boolean {
 
 export function startGame(state: CatchMindState, now: number, pickWord: PickWord): Step {
   if (!canStart(state)) return { state, events: [] };
-  const fresh: CatchMindState = { ...state, phase: 'playing', scores: zeroScores(state.players), round: 0, usedWords: [] };
+  const fresh: CatchMindState = {
+    ...state,
+    phase: 'playing',
+    scores: zeroScores(state.players),
+    round: 0,
+    usedWords: [],
+  };
   const next = beginRound(fresh, 1, now, pickWord);
   return { state: next.state, events: [{ type: 'started' }, ...next.events] };
 }
@@ -95,7 +101,14 @@ function beginRound(state: CatchMindState, round: number, now: number, pickWord:
       ...state,
       round,
       usedWords: [...state.usedWords, word],
-      turn: { drawerId, word, startedAt: now, endsAt: now + CATCHMIND_RULES.roundMs, guessedIds: [], revealUntil: null },
+      turn: {
+        drawerId,
+        word,
+        startedAt: now,
+        endsAt: now + CATCHMIND_RULES.roundMs,
+        guessedIds: [],
+        revealUntil: null,
+      },
     },
     events: [{ type: 'roundStarted', round, drawerId }],
   };

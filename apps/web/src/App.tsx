@@ -13,6 +13,8 @@ import {
 import { EMPTY_MUSIC, type MusicSnapshot } from './features/lounge/model/roomState';
 import { Room } from './features/lounge/room/Room';
 import { prefersReducedMotion } from './shared/hooks/useMediaQuery';
+import { ConnectionBanner } from './shared/realtime/ConnectionBanner';
+import { useConnection } from './shared/realtime/useConnection';
 import { HomePage } from './shared/home/HomePage';
 import { SchedulePlaceholder } from './shared/home/SchedulePlaceholder';
 
@@ -25,14 +27,12 @@ type LiveRoom = {
 
 // 화면 전환은 아직 라우터 없이 상태로 한다 (주소 /room/{코드} 연결은 0단계 이후)
 type Screen =
-  | { name: 'home' }
-  | { name: 'lobby' }
-  | { name: 'room'; room: LiveRoom; created: boolean }
-  | { name: 'schedule' };
+  { name: 'home' } | { name: 'lobby' } | { name: 'room'; room: LiveRoom; created: boolean } | { name: 'schedule' };
 
 const me: Member = { id: ME.id, nickname: ME.nickname, isHost: false, isFriend: false };
 
 export function App() {
+  const connection = useConnection();
   const [screen, setScreen] = useState<Screen>({ name: 'home' });
   const [rooms, setRooms] = useState<LiveRoom[]>([]);
   const [zoom, setZoom] = useState<{ from: DOMRect; room: LiveRoom } | null>(null);
@@ -92,6 +92,7 @@ export function App() {
 
   return (
     <>
+      <ConnectionBanner status={connection} />
       {screen.name === 'home' && <HomePage onLounge={toLobby} onSchedule={() => setScreen({ name: 'schedule' })} />}
       {screen.name === 'lobby' && (
         <Lobby
