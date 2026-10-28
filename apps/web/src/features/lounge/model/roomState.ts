@@ -28,7 +28,7 @@ export type RoomAction =
 
 export const MAX_SONGS_PER_USER = 3;
 
-/** 채팅을 보내면 이 시간 동안 다음 채팅을 보낼 수 없다 (도배·캐치마인드 연타 방지). 명령어(/)는 예외 */
+/** 캐치마인드 라운드 진행 중에만: 채팅을 보내면 이 시간 동안 다음 채팅을 보낼 수 없다 (정답 연타·도배 방지). 명령어(/)는 예외 */
 export const CHAT_COOLDOWN_MS = 3000;
 
 /** 다음 채팅까지 남은 시간(ms). 0이면 바로 보낼 수 있다 */
@@ -41,6 +41,19 @@ export function chatCooldownLeft(lastSentAt: number | null, now: number): number
 export function countsAsChat(text: string): boolean {
   const trimmed = text.trim();
   return trimmed.length > 0 && !trimmed.startsWith('/');
+}
+
+/** 입력창 위 희노애락 이모지. 두 번 눌러 하나만 보낸다 (글과 섞지 않는다) */
+export const QUICK_EMOJIS = [
+  { emoji: '😄', label: '기쁨' },
+  { emoji: '😠', label: '화남' },
+  { emoji: '😢', label: '슬픔' },
+  { emoji: '🤣', label: '즐거움' },
+] as const;
+
+/** 이모지 버튼으로 보낸 메시지인지 (화면에서 크게 보여준다) */
+export function isQuickEmoji(text: string): boolean {
+  return QUICK_EMOJIS.some((q) => q.emoji === text);
 }
 const MAX_MESSAGES = 200;
 

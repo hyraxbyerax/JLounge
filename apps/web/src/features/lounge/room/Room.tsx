@@ -264,7 +264,15 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
     if (view.isDrawer) chatPlaceholder = '그리는 중이에요. 제시어는 채팅에 쓸 수 없어요';
     else if (!view.word) chatPlaceholder = '정답을 입력해보세요';
   }
-  const chat = <ChatPanel messages={state.messages} isHost={isHost} placeholder={chatPlaceholder} onSend={send} />;
+  const chat = (
+    <ChatPanel
+      messages={state.messages}
+      isHost={isHost}
+      placeholder={chatPlaceholder}
+      slowMode={playing}
+      onSend={send}
+    />
+  );
 
   return (
     <div className={`room${isMobile ? ' is-mobile' : ''}`}>

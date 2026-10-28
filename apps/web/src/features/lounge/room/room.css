@@ -632,6 +632,72 @@ code {
   color: var(--color-text-muted);
 }
 
+/* 입력창 왼쪽 😊 버튼과, 누르면 위로 펼쳐지는 희노애락 이모지 판 */
+.emoji-toggle {
+  flex: none;
+  background: none;
+  font-size: var(--text-20);
+}
+
+.emoji-toggle[aria-expanded='true'] {
+  background: var(--color-surface-2);
+}
+
+.emoji-pop {
+  position: absolute;
+  bottom: calc(100% - var(--space-1));
+  left: var(--space-3);
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-surface-2);
+  border-radius: var(--radius-panel);
+  background: var(--color-bg);
+  animation: rise-in 160ms ease-out;
+}
+
+.emoji-hint {
+  padding: 0 var(--space-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  white-space: nowrap;
+}
+
+.emoji-btn {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-control);
+  background: none;
+  font-size: var(--text-20);
+  cursor: pointer;
+  /* 휴대폰에서 두 번 눌러도 화면이 확대되지 않게 */
+  touch-action: manipulation;
+  user-select: none;
+}
+
+.emoji-btn:active {
+  background: var(--color-surface-2);
+}
+
+.emoji-btn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* 이모지만 보낸 메시지는 말풍선 없이 크게 */
+.bubble.is-emoji {
+  padding: 0;
+  background: none;
+  font-size: var(--text-28);
+  line-height: 1.2;
+}
+
 .chat-form {
   position: relative;
   display: flex;

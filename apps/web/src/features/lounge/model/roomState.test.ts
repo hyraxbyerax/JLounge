@@ -5,6 +5,8 @@ import {
   chatCooldownLeft,
   countsAsChat,
   createRoomState,
+  isQuickEmoji,
+  QUICK_EMOJIS,
   roomReducer,
   type RoomState,
 } from './roomState';
@@ -127,5 +129,13 @@ describe('일시정지·재개', () => {
     expect(paused.paused).toBe(true);
     expect(resumed.paused).toBe(false);
     expect(resumed.messages.length).toBe(before);
+  });
+});
+
+describe('희노애락 이모지', () => {
+  it('이모지 버튼 하나만 보낸 메시지를 알아본다', () => {
+    expect(QUICK_EMOJIS.map((q) => q.emoji)).toEqual(['😄', '😠', '😢', '🤣']);
+    expect(isQuickEmoji('🤣')).toBe(true);
+    expect(isQuickEmoji('ㅋㅋ🤣')).toBe(false);
   });
 });
