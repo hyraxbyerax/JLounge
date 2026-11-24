@@ -1,9 +1,12 @@
 import { useEffect, useId, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { ME, type ChatMessage } from '../model/room';
+import { CHAT_MAX } from '@lounge/shared';
+import type { ChatMessage } from '../model/room';
 import { chatCooldownLeft, countsAsChat, HOST_COMMANDS, isQuickEmoji, QUICK_EMOJIS } from '../model/roomState';
 
 type Props = {
   messages: ChatMessage[];
+  /** 내 메시지는 오른쪽에 */
+  meId: string;
   isHost: boolean;
   /** 게임 중 안내처럼 상황에 맞는 입력창 안내 */
   placeholder?: string;
@@ -12,11 +15,9 @@ type Props = {
   onSend: (text: string) => void;
 };
 
-const MAX_LENGTH = 200;
-
 const timeFormat = new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', hour: '2-digit', minute: '2-digit' });
 
-export function ChatPanel({ messages, isHost, placeholder, slowMode = false, onSend }: Props) {
+export function ChatPanel({ messages, meId, isHost, placeholder, slowMode = false, onSend }: Props) {
   const [text, setText] = useState('');
   const [active, setActive] = useState(0);
   const listRef = useRef<HTMLOListElement>(null);
@@ -119,7 +120,7 @@ export function ChatPanel({ messages, isHost, placeholder, slowMode = false, onS
     <section className="chat" aria-label="채팅">
       <ol ref={listRef} className="chat-list" aria-live="polite">
         {messages.map((m) => (
-          <MessageItem key={m.id} message={m} />
+          <MessageItem key={m.id} message={m} meId={meId} />
         ))}
       </ol>
 
@@ -193,7 +194,7 @@ export function ChatPanel({ messages, isHost, placeholder, slowMode = false, onS
           className="input"
           placeholder={placeholder ?? (isHost ? '메시지 입력 ( / 로 명령어)' : '메시지 입력')}
           autoComplete="off"
-          maxLength={MAX_LENGTH}
+          maxLength={CHAT_MAX}
           value={text}
           role="combobox"
           aria-expanded={suggestions.length > 0}
@@ -218,7 +219,7 @@ export function ChatPanel({ messages, isHost, placeholder, slowMode = false, onS
   );
 }
 
-function MessageItem({ message }: { message: ChatMessage }) {
+function MessageItem({ message, meId }: { message: ChatMessage; meId: string }) {
   if (message.kind === 'system') {
     return <li className="msg-system">{message.text}</li>;
   }
@@ -229,7 +230,7 @@ function MessageItem({ message }: { message: ChatMessage }) {
       </li>
     );
   }
-  const mine = message.userId === ME.id;
+  const mine = message.userId === meId;
   return (
     <li className={`msg${mine ? ' is-mine' : ''}`}>
       {!mine && <span className="msg-nick">{message.nickname}</span>}

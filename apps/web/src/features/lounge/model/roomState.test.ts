@@ -11,11 +11,12 @@ import {
   type RoomState,
 } from './roomState';
 
+const ME = { id: 'me', nickname: '전북곰' };
 const song = (n: number): Song => ({ videoId: `v${n}`, title: `곡${n}`, durationSec: 200 });
 const lastText = (s: RoomState) => s.messages.at(-1)?.text;
 
 function withSongs(...ns: number[]): RoomState {
-  return ns.reduce((s, n) => roomReducer(s, { type: 'request', song: song(n) }), createRoomState());
+  return ns.reduce((s, n) => roomReducer(s, { type: 'request', song: song(n) }), createRoomState(ME));
 }
 
 describe('곡 신청', () => {
@@ -68,26 +69,26 @@ describe('다음 곡 전환', () => {
 
 describe('방장 명령어', () => {
   it('방장이 아니면 실행되지 않는다', () => {
-    const s = roomReducer(withSongs(1, 2), { type: 'send', text: '/skip', isHost: false });
+    const s = roomReducer(withSongs(1, 2), { type: 'command', text: '/skip', isHost: false });
     expect(s.now?.videoId).toBe('v1');
     expect(lastText(s)).toBe('방장만 쓸 수 있는 명령어예요');
   });
 
   it('/skip은 대기큐 맨 앞 곡을 재생한다', () => {
-    const s = roomReducer(withSongs(1, 2, 3), { type: 'send', text: '/skip', isHost: true });
+    const s = roomReducer(withSongs(1, 2, 3), { type: 'command', text: '/skip', isHost: true });
     expect(s.now?.videoId).toBe('v2');
     expect(s.queue.map((e) => e.videoId)).toEqual(['v3']);
   });
 
   it('/move는 대기큐 순서를 바꾸고, 범위 밖 번호는 거절한다', () => {
-    const s = roomReducer(withSongs(1, 2, 3, 4), { type: 'send', text: '/move 3 1', isHost: true });
+    const s = roomReducer(withSongs(1, 2, 3, 4), { type: 'command', text: '/move 3 1', isHost: true });
     expect(s.queue.map((e) => e.videoId)).toEqual(['v4', 'v2', 'v3']);
-    const bad = roomReducer(s, { type: 'send', text: '/move 9 1', isHost: true });
+    const bad = roomReducer(s, { type: 'command', text: '/move 9 1', isHost: true });
     expect(bad.queue).toEqual(s.queue);
   });
 
   it('명령어는 채팅에 남지 않는다', () => {
-    const s = roomReducer(withSongs(1), { type: 'send', text: '/pause', isHost: true });
+    const s = roomReducer(withSongs(1), { type: 'command', text: '/pause', isHost: true });
     expect(s.messages.some((m) => m.kind === 'user')).toBe(false);
     expect(s.paused).toBe(true);
   });
@@ -110,12 +111,12 @@ describe('채팅 제한', () => {
 
 describe('게임 강제 종료 명령어', () => {
   it('방장이 아니면 쓸 수 없다', () => {
-    const s = roomReducer(createRoomState(), { type: 'send', text: '/endgame', isHost: false });
+    const s = roomReducer(createRoomState(ME), { type: 'command', text: '/endgame', isHost: false });
     expect(lastText(s)).toBe('방장만 쓸 수 있는 명령어예요');
   });
 
   it('게임이 없을 때 방장이 쓰면 안내만 한다 (게임이 있으면 방이 먼저 처리)', () => {
-    const s = roomReducer(createRoomState(), { type: 'send', text: '/endgame', isHost: true });
+    const s = roomReducer(createRoomState(ME), { type: 'command', text: '/endgame', isHost: true });
     expect(lastText(s)).toBe('진행 중인 게임이 없어요');
   });
 });
@@ -124,11 +125,34 @@ describe('일시정지·재개', () => {
   it('채팅에 시스템 메시지를 남기지 않는다', () => {
     const s = withSongs(1);
     const before = s.messages.length;
-    const paused = roomReducer(s, { type: 'send', text: '/pause', isHost: true });
-    const resumed = roomReducer(paused, { type: 'send', text: '/resume', isHost: true });
+    const paused = roomReducer(s, { type: 'command', text: '/pause', isHost: true });
+    const resumed = roomReducer(paused, { type: 'command', text: '/resume', isHost: true });
     expect(paused.paused).toBe(true);
     expect(resumed.paused).toBe(false);
     expect(resumed.messages.length).toBe(before);
+  });
+});
+
+describe('서버 채팅 받기', () => {
+  it('서버가 보낸 메시지를 붙이고, 같은 메시지가 또 와도 한 번만 남긴다', () => {
+    const message = {
+      id: 'r:1',
+      seq: 1,
+      kind: 'user' as const,
+      userId: 'a',
+      nickname: '가',
+      text: '안녕',
+      sentAt: '2026-11-25T00:00:00.000Z',
+    };
+    const once = roomReducer(createRoomState(ME), { type: 'receive', messages: [message] });
+    const twice = roomReducer(once, { type: 'receive', messages: [message] });
+    expect(twice.messages.map((m) => m.text)).toEqual(['안녕']);
+    expect(twice).toBe(once);
+  });
+
+  it('명령어가 아닌 글은 화면에서 채팅으로 만들지 않는다 (서버를 거친다)', () => {
+    const s = roomReducer(createRoomState(ME), { type: 'command', text: '그냥 채팅', isHost: true });
+    expect(s.messages).toHaveLength(0);
   });
 });
 

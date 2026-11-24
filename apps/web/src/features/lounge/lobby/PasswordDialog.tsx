@@ -1,40 +1,37 @@
 import { useState, type FormEvent } from 'react';
+import { ApiError, errorMessage } from '../../../shared/api/ApiError';
 import { Modal } from '../../../shared/ui/Modal';
-import type { RoomInfo } from '../model/room';
-
-const MAX_TRIES = 5;
 
 type Props = {
-  room: RoomInfo;
-  onSuccess: () => void;
+  /** 방 이름을 알면 제목에, 모르면(코드로 들어올 때) "방에 들어가기" */
+  roomName?: string;
+  /** 서버가 비밀번호를 확인한다. 틀리면 남은 횟수가 담긴 ApiError */
+  onSubmit: (password: string) => Promise<void>;
   onClose: () => void;
 };
 
-export function PasswordDialog({ room, onSuccess, onClose }: Props) {
+export function PasswordDialog({ roomName, onSubmit, onClose }: Props) {
   const [password, setPassword] = useState('');
-  const [fails, setFails] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const lockedOut = fails >= MAX_TRIES;
+  const [lockedOut, setLockedOut] = useState(false);
+  const [busy, setBusy] = useState(false);
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
-    if (lockedOut) return;
-    if (password === room.password) {
-      onSuccess();
-      return;
+    if (lockedOut || !password) return;
+    setBusy(true);
+    try {
+      await onSubmit(password);
+    } catch (err) {
+      setPassword('');
+      setError(errorMessage(err));
+      if (err instanceof ApiError && err.code === 'PASSWORD_LOCKED') setLockedOut(true);
+      setBusy(false);
     }
-    const nextFails = fails + 1;
-    setFails(nextFails);
-    setPassword('');
-    setError(
-      nextFails >= MAX_TRIES
-        ? `비밀번호를 ${MAX_TRIES}번 틀렸어요. 10분 뒤에 다시 시도해주세요`
-        : `비밀번호가 달라요. ${MAX_TRIES - nextFails}번 더 시도할 수 있어요`,
-    );
   }
 
   return (
-    <Modal title={`${room.name}에 들어가기`} onClose={onClose}>
+    <Modal title={roomName ? `${roomName}에 들어가기` : '방에 들어가기'} onClose={onClose}>
       <form className="modal-form" onSubmit={submit}>
         <label className="form-label" htmlFor="room-password">
           비밀번호
@@ -57,7 +54,7 @@ export function PasswordDialog({ room, onSuccess, onClose }: Props) {
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             취소
           </button>
-          <button type="submit" className="btn btn-primary" disabled={lockedOut}>
+          <button type="submit" className="btn btn-primary" disabled={lockedOut || busy}>
             들어가기
           </button>
         </div>

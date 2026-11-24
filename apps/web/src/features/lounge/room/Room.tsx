@@ -1,15 +1,16 @@
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { errorMessage } from '../../../shared/api/ApiError';
 import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
 import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
-import { useTimeouts } from '../../../shared/hooks/useTimeouts';
 import { LockIcon } from '../../../shared/ui/icons';
 import { Toast, useNotice } from '../../../shared/ui/Toast';
-import { BOT, BOT_LINES, botReply } from '../bot/bot';
+import { BOT } from '../bot/bot';
 import { CatchMindPanel } from '../game/catchmind/CatchMindPanel';
 import { useCatchMind } from '../game/catchmind/useCatchMind';
 import { GamePickerDialog } from '../game/GamePickerDialog';
-import { joinMembers, ME, transferHost, type Member, type RoomInfo, type RoomSettings } from '../model/room';
-import { createRoomState, roomReducer, type MusicSnapshot, type PostedMessage } from '../model/roomState';
+import { toMembers, type Me, type Member, type RoomSettings } from '../model/room';
+import { createRoomState, roomReducer, type PostedMessage } from '../model/roomState';
+import { callBot, kickMember, sendChat, transferHost, updateRoom, type RoomSession } from '../net/loungeClient';
 import { ChatPanel } from './ChatPanel';
 import { MemberList } from './MemberList';
 import { LoungeTV } from './LoungeTV';
@@ -20,15 +21,12 @@ import { SongSearchDialog } from './SongSearchDialog';
 import './room.css';
 
 type Props = {
-  room: RoomInfo;
-  /** 들어온 순서. 내가 들어온 뒤의 목록이다 */
-  members: Member[];
-  music: MusicSnapshot;
-  /** 방금 만든 방인지 */
+  /** 서버가 준 방 정보와 채팅 (loungeClient 가 계속 갱신한다) */
+  session: RoomSession;
+  me: Me;
+  /** 방금 만든 방인지 (만든 사람에게만 안내를 보여준다) */
   created: boolean;
-  onUpdate: (room: RoomInfo) => void;
-  /** 나갈 때 방에 남는 상태를 넘긴다 (방장 위임은 받는 쪽에서) */
-  onLeave: (snapshot: { members: Member[]; music: MusicSnapshot }) => void;
+  onLeave: () => void;
 };
 
 type Tab = 'chat' | 'queue' | 'members';
@@ -40,13 +38,12 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'members', label: '참가자' },
 ];
 
-const BOT_JOIN_DELAY_MS = 1200;
-
-export function Room({ room, members: initialMembers, music, created, onUpdate, onLeave }: Props) {
+export function Room({ session, me, created, onLeave }: Props) {
+  const room = session.view;
   const [state, dispatch] = useReducer(roomReducer, null, () =>
-    createRoomState(music, created ? undefined : `${ME.nickname}님이 들어왔어요`),
+    createRoomState(me, created ? '방을 만들었어요. 초대 링크로 친구를 불러보세요' : undefined),
   );
-  const [members, setMembers] = useState(initialMembers);
+  const members = useMemo(() => toMembers(room), [room]);
   const botJoined = members.some((m) => m.id === BOT.id);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [notice, showNotice] = useNotice();
@@ -59,47 +56,31 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(80);
   const [blocked, setBlocked] = useState(false);
-  const later = useTimeouts();
 
-  const host = members.find((m) => m.isHost) ?? members[0]!;
-  const isHost = host.id === ME.id;
+  const host = members.find((m) => m.isHost) ?? members[0];
+  const isHost = room.hostId === me.id;
   const nicknameOf = useCallback((id: string) => members.find((m) => m.id === id)?.nickname ?? '누군가', [members]);
 
-  const post = useCallback((message: PostedMessage) => dispatch({ type: 'post', message }), []);
-  const botSay = useCallback(
-    (text: string, delayMs: number) =>
-      later(() => post({ kind: 'user', userId: BOT.id, nickname: BOT.nickname, text }), delayMs),
-    [later, post],
-  );
-
-  // 새 방이면 연습 상대가 조금 뒤에 들어온다.
-  // 연습 상대가 지키던 방에 돌아오면, 방장이던 연습 상대가 방장을 다시 넘겨준다.
-  const firstMembers = useRef(initialMembers).current;
-  const botWasHost = useRef(firstMembers.some((m) => m.id === BOT.id && m.isHost));
+  // 서버가 보낸 채팅을 화면 채팅 목록에 붙인다 (같은 메시지는 한 번만)
   useEffect(() => {
-    if (botWasHost.current) {
-      botSay(BOT_LINES.welcomeBack, 1000);
-      later(() => {
-        botWasHost.current = false;
-        setMembers((ms) => transferHost(ms, ME.id));
-        post({ kind: 'system', text: `방장이 ${ME.nickname}님으로 바뀌었어요` });
-      }, 2200);
-      return;
-    }
-    if (firstMembers.some((m) => m.id === BOT.id)) return;
-    later(() => {
-      setMembers((ms) =>
-        joinMembers(ms, { id: BOT.id, nickname: BOT.nickname, isHost: false, isFriend: false, isBot: true }),
-      );
-      post({ kind: 'system', text: `${BOT.nickname}님이 들어왔어요` });
-      botSay(BOT_LINES.greet, 1500);
-    }, BOT_JOIN_DELAY_MS);
-  }, [firstMembers, botSay, later, post]);
+    dispatch({ type: 'receive', messages: session.messages });
+  }, [session.messages]);
 
-  const players = useMemo(() => members.map((m) => m.id), [members]);
-  const catchmind = useCatchMind({ players, nicknameOf, post });
+  const post = useCallback((message: PostedMessage) => dispatch({ type: 'post', message }), []);
+  const tell = useCallback((text: string) => post({ kind: 'private', text }), [post]);
+
+  // 3단계 전까지 캐치마인드는 방장 화면 안에서 "방장 + 연습 상대"끼리만 (docs/lounge-spec.md 8장)
+  const players = useMemo(() => (isHost && botJoined ? [me.id, BOT.id] : [me.id]), [isHost, botJoined, me.id]);
+  const catchmind = useCatchMind({ meId: me.id, players, nicknameOf, post });
   const { game, view } = catchmind;
   const playing = game?.phase === 'playing';
+
+  // 방장을 넘겼거나 연습 상대가 나가면 이 화면의 게임은 닫는다
+  const canPlay = isHost && botJoined;
+  const { quit } = catchmind;
+  useEffect(() => {
+    if (!canPlay && game) quit();
+  }, [canPlay, game, quit]);
 
   function send(text: string) {
     const trimmed = text.trim();
@@ -110,22 +91,24 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
       catchmind.quit(true);
       return;
     }
+    if (isCommand) {
+      dispatch({ type: 'command', text, isHost });
+      return;
+    }
 
-    if (!isCommand && playing) {
-      const result = catchmind.guess(ME.id, trimmed);
+    if (playing) {
+      const result = catchmind.guess(me.id, trimmed);
       if (result === 'correct') return;
       if (result === 'blocked') {
-        post({ kind: 'private', text: '정답이 드러나는 말은 채팅에 쓸 수 없어요' });
+        tell('정답이 드러나는 말은 채팅에 쓸 수 없어요');
         return;
       }
     }
-
-    dispatch({ type: 'send', text, isHost });
-    if (!isCommand && botJoined && !playing) {
-      const reply = botReply(trimmed);
-      if (reply) botSay(reply, 900 + Math.random() * 1500);
-    }
+    sendChat(trimmed).catch((err: unknown) => tell(errorMessage(err)));
   }
+
+  /** 방장 동작은 서버가 확인한다. 거절되면 이유를 나에게만 보여준다 */
+  const hostAction = (task: Promise<unknown>) => task.catch((err: unknown) => tell(errorMessage(err)));
 
   async function invite() {
     const link = `${window.location.origin}/room/${room.code}`;
@@ -137,10 +120,9 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
     }
   }
 
-  function saveSettings(settings: RoomSettings) {
-    onUpdate({ ...room, ...settings });
+  async function saveSettings(settings: RoomSettings) {
+    await updateRoom(settings);
     setDialog(null);
-    post({ kind: 'system', text: '방장이 방 설정을 바꿨어요' });
   }
 
   function pickGame() {
@@ -151,9 +133,14 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
   const closeMenu = () => setMenuOpen(false);
   const actions = (
     <>
-      {isHost && !game && (
+      {canPlay && !game && (
         <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), setDialog('game'))}>
           게임
+        </button>
+      )}
+      {isHost && !botJoined && (
+        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), hostAction(callBot()))}>
+          연습 상대 부르기
         </button>
       )}
       <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), invite())}>
@@ -164,23 +151,19 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
           설정
         </button>
       )}
-      <button
-        type="button"
-        className="btn btn-ghost"
-        onClick={() => onLeave({ members, music: { now: state.now, paused: state.paused, queue: state.queue } })}
-      >
+      <button type="button" className="btn btn-ghost" onClick={onLeave}>
         나가기
       </button>
     </>
   );
 
-  const badges = [!room.isPublic && '비공개', room.password !== null && '비밀번호'].filter(Boolean);
+  const badges = [!room.isPublic && '비공개', room.hasPassword && '비밀번호'].filter(Boolean);
 
   const header = (
     <header className="room-header">
       <h1 className="room-name sign">{room.name}</h1>
       <p className="room-info">
-        {!isMobile && <>👑 {host.nickname} · </>}
+        {!isMobile && host && <>👑 {host.nickname} · </>}
         {members.length}/{room.maxMembers}
         {badges.length > 0 && <> · {badges.join(' · ')}</>}
         {room.locked && (
@@ -222,6 +205,7 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
       now={state.now}
       paused={state.paused}
       queue={state.queue}
+      meId={me.id}
       isHost={isHost}
       variant={game ? 'mini' : 'remote'}
       compact={isMobile}
@@ -229,7 +213,7 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
       blocked={blocked}
       muted={muted}
       onMutedChange={setMuted}
-      onHostCommand={(command: HostMusicCommand) => dispatch({ type: 'send', text: command, isHost })}
+      onHostCommand={(command: HostMusicCommand) => dispatch({ type: 'command', text: command, isHost })}
       onRequest={() => setDialog('song')}
       onCancel={cancel}
     />
@@ -248,7 +232,7 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
           onMutedChange={setMuted}
           onVolumeChange={changeVolume}
           isHost={isHost}
-          onTogglePause={() => dispatch({ type: 'send', text: state.paused ? '/resume' : '/pause', isHost })}
+          onTogglePause={() => dispatch({ type: 'command', text: state.paused ? '/resume' : '/pause', isHost })}
           onPlayer={setPlayer}
           onBlockedChange={setBlocked}
           onEnded={(entryId) => dispatch({ type: 'ended', entryId })}
@@ -267,10 +251,21 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
   const chat = (
     <ChatPanel
       messages={state.messages}
+      meId={me.id}
       isHost={isHost}
       placeholder={chatPlaceholder}
       slowMode={playing}
       onSend={send}
+    />
+  );
+
+  const memberList = (
+    <MemberList
+      members={members}
+      meId={me.id}
+      isHost={isHost}
+      onTransfer={(m: Member) => hostAction(transferHost(m.id))}
+      onKick={(m: Member) => hostAction(kickMember(m.id))}
     />
   );
 
@@ -302,15 +297,11 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
             {tab === 'chat' && chat}
             {tab === 'queue' && (
               <div className="tab-scroll">
-                <QueueList queue={state.queue} onCancel={cancel} />
+                <QueueList queue={state.queue} meId={me.id} onCancel={cancel} />
                 {isHost && <CommandHelp />}
               </div>
             )}
-            {tab === 'members' && (
-              <div className="tab-scroll">
-                <MemberList members={members} />
-              </div>
-            )}
+            {tab === 'members' && <div className="tab-scroll">{memberList}</div>}
           </div>
         </>
       ) : (
@@ -331,7 +322,7 @@ export function Room({ room, members: initialMembers, music, created, onUpdate, 
               >
                 참가자 {members.length}명 <span aria-hidden="true">{membersOpen ? '▴' : '▾'}</span>
               </button>
-              {membersOpen && <MemberList members={members} />}
+              {membersOpen && memberList}
             </div>
             {chat}
           </aside>

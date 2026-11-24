@@ -1,11 +1,13 @@
 /*
  * 서버와의 실시간 연결 (Socket.IO).
  * - 서버가 여러 대여도 되도록 websocket 전송만 쓴다.
- * - 끊기면 자동으로 다시 연결한다. 다시 연결되면 화면은 방 상태를 새로 받는다 (1단계부터).
+ * - 끊기면 자동으로 다시 연결한다. 다시 연결되면 onConnect 로 알려서 방 상태·놓친 채팅을 다시 받게 한다.
  * - 토큰이 거절되면 게스트 세션을 새로 받아 다시 연결한다.
  * - 로그인·로그아웃하면 바뀐 사람(토큰)으로 다시 연결한다.
  */
+import type { AckResult, ClientToServerEvents, ServerToClientEvents } from '@lounge/shared';
 import { io, type Socket } from 'socket.io-client';
+import { ApiError } from '../api/ApiError';
 import {
   clearSession,
   getMemberSession,
@@ -16,45 +18,51 @@ import {
 } from '../api/session';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'offline';
+export type LoungeSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
 type Listener = (status: ConnectionStatus) => void;
+
+/** 서버가 이 시간 안에 답하지 않으면 실패로 본다 */
+const REQUEST_TIMEOUT_MS = 8_000;
 
 /** 브라우저 시계 − 서버 시계 (ms). 음악 동기화에 쓴다 */
 let clockOffsetMs = 0;
 export const serverNow = () => Date.now() - clockOffsetMs;
 
-let socket: Socket | null = null;
+let socketPromise: Promise<LoungeSocket> | null = null;
+let socket: LoungeSocket | null = null;
 let status: ConnectionStatus = 'connecting';
 let user: SessionUser | null = null;
 const listeners = new Set<Listener>();
+const connectListeners = new Set<(s: LoungeSocket) => void>();
 
 function setStatus(next: ConnectionStatus) {
   status = next;
   listeners.forEach((l) => l(next));
 }
 
-function syncClock(s: Socket) {
+function syncClock(s: LoungeSocket) {
   const sentAt = Date.now();
-  s.emit('time:sync', (res: { data?: { serverTime: string } }) => {
-    if (!res.data) return;
+  s.emit('time:sync', (res) => {
+    if (!('data' in res)) return;
     const receivedAt = Date.now();
     const serverTime = Date.parse(res.data.serverTime) + (receivedAt - sentAt) / 2;
     clockOffsetMs = receivedAt - serverTime;
   });
 }
 
-export async function connect(): Promise<Socket> {
-  if (socket) return socket;
+async function open(): Promise<LoungeSocket> {
   let session;
   try {
     session = await getSession();
   } catch {
     setStatus('offline');
-    throw new Error('서버에 연결하지 못했어요');
+    socketPromise = null;
+    throw new ApiError('OFFLINE', '서버에 연결하지 못했어요. 잠시 뒤 다시 시도해주세요');
   }
   user = session.user;
 
-  const s = io({
+  const s: LoungeSocket = io({
     transports: ['websocket'],
     auth: { token: session.token },
     reconnection: true,
@@ -66,6 +74,7 @@ export async function connect(): Promise<Socket> {
   s.on('connect', () => {
     setStatus('connected');
     syncClock(s);
+    connectListeners.forEach((l) => l(s));
   });
   s.on('disconnect', (reason) => {
     // 서버가 끊은 경우(io server disconnect)에는 자동 재접속이 안 되므로 직접 다시 연결
@@ -91,6 +100,39 @@ export async function connect(): Promise<Socket> {
   });
 
   return s;
+}
+
+export function connect(): Promise<LoungeSocket> {
+  socketPromise ??= open();
+  return socketPromise;
+}
+
+/** 연결될 때마다(처음·다시 연결) 불린다. 이미 연결돼 있으면 바로 한 번 부른다 */
+export function onConnect(listener: (s: LoungeSocket) => void): () => void {
+  connectListeners.add(listener);
+  if (socket?.connected) listener(socket);
+  return () => connectListeners.delete(listener);
+}
+
+type EventArgs<E extends keyof ClientToServerEvents> =
+  Parameters<ClientToServerEvents[E]> extends [...infer A, unknown] ? A : never;
+type EventData<E extends keyof ClientToServerEvents> =
+  Parameters<ClientToServerEvents[E]> extends [...unknown[], (res: AckResult<infer T>) => void] ? T : never;
+
+/** 서버에 요청하고 응답을 기다린다. 실패하면 ApiError (message 는 화면에 그대로 보여줄 수 있는 문장) */
+export async function request<E extends keyof ClientToServerEvents>(
+  event: E,
+  ...args: EventArgs<E>
+): Promise<EventData<E>> {
+  const s = await connect();
+  let res: AckResult<EventData<E>>;
+  try {
+    res = await (s.timeout(REQUEST_TIMEOUT_MS).emitWithAck as (...a: unknown[]) => Promise<typeof res>)(event, ...args);
+  } catch {
+    throw new ApiError('TIMEOUT', '서버가 답하지 않아요. 잠시 뒤 다시 시도해주세요');
+  }
+  if ('error' in res) throw new ApiError(res.error.code, res.error.message);
+  return res.data;
 }
 
 onSessionChange(async () => {

@@ -17,6 +17,17 @@ export function WindowZoom({ from, onDone }: Props) {
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      onDoneRef.current();
+    };
+    // 탭이 뒤에 있으면 브라우저가 애니메이션을 멈추므로 바로 들어간다
+    if (document.hidden) {
+      finish();
+      return;
+    }
     const styles = getComputedStyle(document.documentElement);
     const light = styles.getPropertyValue('--color-light').trim();
     const bg = styles.getPropertyValue('--color-bg').trim();
@@ -36,8 +47,13 @@ export function WindowZoom({ from, onDone }: Props) {
       ],
       { duration: 400, easing: 'cubic-bezier(0.3, 0, 0.1, 1)', fill: 'forwards' },
     );
-    animation.onfinish = () => onDoneRef.current();
-    return () => animation.cancel();
+    animation.onfinish = finish;
+    // 애니메이션이 어떤 이유로든 끝나지 않아도 방에는 들어가게
+    const fallback = window.setTimeout(finish, 1000);
+    return () => {
+      window.clearTimeout(fallback);
+      animation.cancel();
+    };
   }, [from]);
 
   return <div ref={ref} className="window-zoom" aria-hidden="true" />;

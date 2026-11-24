@@ -1,12 +1,13 @@
-import { ME, type QueuedSong } from '../model/room';
+import type { QueuedSong } from '../model/room';
 import { HOST_COMMANDS } from '../model/roomState';
 
 type Props = {
   queue: QueuedSong[];
+  meId: string;
   onCancel: (entryId: string) => void;
 };
 
-export function QueueList({ queue, onCancel }: Props) {
+export function QueueList({ queue, meId, onCancel }: Props) {
   if (queue.length === 0) {
     return <p className="queue-empty">다음 곡이 없어요. 듣고 싶은 곡을 신청해보세요</p>;
   }
@@ -19,7 +20,7 @@ export function QueueList({ queue, onCancel }: Props) {
             <span className="queue-title">{song.title}</span>
             <span className="queue-by">{song.requesterNickname}</span>
           </span>
-          {song.requesterId === ME.id && (
+          {song.requesterId === meId && (
             <button type="button" className="btn-text" onClick={() => onCancel(song.entryId)}>
               취소
             </button>

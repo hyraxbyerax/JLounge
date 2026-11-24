@@ -9,6 +9,8 @@ type Props = {
   now: QueuedSong | null;
   paused: boolean;
   queue: QueuedSong[];
+  /** 내가 신청한 곡에만 [취소] */
+  meId: string;
   isHost: boolean;
   /**
    * remote: 평소, 라운지 TV 아래에 붙는 리모컨 (곡 정보·버튼 / 재생 위치)
@@ -58,6 +60,7 @@ export function MusicBar({
   now,
   paused,
   queue,
+  meId,
   isHost,
   variant = 'remote',
   compact = false,
@@ -230,7 +233,7 @@ export function MusicBar({
 
       {popover && (
         <div className="music-popover">
-          {popover === 'queue' ? <QueueList queue={queue} onCancel={onCancel} /> : <CommandHelp />}
+          {popover === 'queue' ? <QueueList queue={queue} meId={meId} onCancel={onCancel} /> : <CommandHelp />}
         </div>
       )}
     </section>

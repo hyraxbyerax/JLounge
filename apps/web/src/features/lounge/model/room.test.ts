@@ -1,42 +1,66 @@
 import { describe, expect, it } from 'vitest';
-import { joinMembers, leaveMembers, transferHost, type Member } from './room';
+import { brightness, isEnterable, sortRooms, toMembers, windowState, type RoomInfo } from './room';
 
-const member = (id: string): Member => ({ id, nickname: id, isHost: false, isFriend: false });
-const hostOf = (members: Member[] | null) => members?.filter((m) => m.isHost).map((m) => m.id);
+const room = (over: Partial<RoomInfo> = {}): RoomInfo => ({
+  id: 'r',
+  code: 'ABC123',
+  name: '방',
+  hasPassword: false,
+  locked: false,
+  members: 2,
+  maxMembers: 6,
+  game: null,
+  nowPlaying: null,
+  ...over,
+});
 
-function roomOf(...ids: string[]): Member[] {
-  return ids.reduce<Member[]>((ms, id) => joinMembers(ms, member(id)), []);
-}
-
-describe('참가자', () => {
-  it('처음 들어온 사람이 방장이고, 나머지는 들어온 순서대로 뒤에 선다', () => {
-    const ms = roomOf('a', 'b', 'c');
-    expect(ms.map((m) => m.id)).toEqual(['a', 'b', 'c']);
-    expect(hostOf(ms)).toEqual(['a']);
+describe('로비 창문', () => {
+  it('잠금 > 가득 참 > 게임 중 > 입장 가능 순으로 상태를 정한다', () => {
+    expect(windowState(room({ locked: true, members: 6 }))).toBe('locked');
+    expect(windowState(room({ members: 6 }))).toBe('full');
+    expect(windowState(room({ game: '캐치마인드' }))).toBe('game');
+    expect(windowState(room())).toBe('open');
+    expect(isEnterable(room({ game: '캐치마인드' }))).toBe(true);
+    expect(isEnterable(room({ members: 6 }))).toBe(false);
   });
 
-  it('방장이 나가면 가장 오래 있던 사람이 방장이 된다', () => {
-    const left = leaveMembers(roomOf('a', 'b', 'c'), 'a');
-    expect(left?.map((m) => m.id)).toEqual(['b', 'c']);
-    expect(hostOf(left)).toEqual(['b']);
+  it('입장 가능한 방이 앞, 가득 찬 방, 잠긴 방이 뒤', () => {
+    const sorted = sortRooms([
+      room({ id: 'locked', locked: true }),
+      room({ id: 'full', members: 6 }),
+      room({ id: 'open' }),
+    ]);
+    expect(sorted.map((r) => r.id)).toEqual(['open', 'full', 'locked']);
   });
 
-  it('방장이 아닌 사람이 나가면 방장은 그대로다', () => {
-    expect(hostOf(leaveMembers(roomOf('a', 'b', 'c'), 'b'))).toEqual(['a']);
+  it('인원이 많을수록 밝다', () => {
+    expect(brightness(room({ members: 1 }))).toBe(1);
+    expect(brightness(room({ members: 3 }))).toBe(2);
+    expect(brightness(room({ members: 5 }))).toBe(3);
   });
+});
 
-  it('마지막 사람이 나가면 방이 없어진다', () => {
-    expect(leaveMembers(roomOf('a'), 'a')).toBeNull();
-  });
-
-  it('다시 들어오면 맨 뒤에 서고 방장이 아니다', () => {
-    const back = joinMembers(leaveMembers(roomOf('a', 'b'), 'a')!, member('a'));
-    expect(back.map((m) => m.id)).toEqual(['b', 'a']);
-    expect(hostOf(back)).toEqual(['b']);
-  });
-
-  it('방장을 넘길 수 있고, 방에 없는 사람에게는 못 넘긴다', () => {
-    expect(hostOf(transferHost(roomOf('a', 'b'), 'b'))).toEqual(['b']);
-    expect(hostOf(transferHost(roomOf('a', 'b'), 'x'))).toEqual(['a']);
+describe('참가자 목록', () => {
+  it('서버가 준 순서 그대로, 방장·연습 상대를 표시한다', () => {
+    const members = toMembers({
+      id: 'r',
+      code: 'ABC123',
+      name: '방',
+      isPublic: true,
+      hasPassword: false,
+      locked: false,
+      maxMembers: 6,
+      hostId: 'b',
+      members: [
+        { userId: 'a', nickname: '가', isGuest: true, isBot: false },
+        { userId: 'b', nickname: '나', isGuest: false, isBot: false },
+        { userId: 'bot', nickname: '새벽코딩', isGuest: true, isBot: true },
+      ],
+    });
+    expect(members.map((m) => [m.id, m.isHost, m.isBot])).toEqual([
+      ['a', false, false],
+      ['b', true, false],
+      ['bot', false, true],
+    ]);
   });
 });

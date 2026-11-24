@@ -1,24 +1,30 @@
 /*
- * 방 안 상태(채팅·음악). 지금은 화면 안에서만 바뀐다.
- * 서버를 붙이면 같은 규칙(1인 3곡, 중복 금지, 방장 명령어)을 서버에서 판정한다.
+ * 방 안 화면 상태(음악·채팅 목록).
+ * 채팅은 서버가 보낸 것(receive)과 나에게만 보이는 안내·명령어 결과를 한 목록에 모은다.
+ * 음악은 2단계 전까지 화면 안에서만 바뀐다. 2단계에서 같은 규칙(1인 3곡, 중복 금지, 방장 명령어)을 서버로 옮긴다.
  */
-import { ME, type ChatMessage, type QueuedSong, type Song } from './room';
+import type { ServerChatMessage } from '@lounge/shared';
+import type { ChatMessage, Me, QueuedSong, Song } from './room';
 
 export type RoomState = {
+  me: Me;
   now: QueuedSong | null;
   paused: boolean;
   queue: QueuedSong[];
   messages: ChatMessage[];
 };
 
-/** 다른 사람(가상 사람 포함)이나 게임이 채팅에 올리는 메시지 */
+/** 게임·연습 상대가 내 화면 채팅에 올리는 메시지 */
 export type PostedMessage =
   | { kind: 'user'; userId: string; nickname: string; text: string }
   | { kind: 'system'; text: string }
   | { kind: 'private'; text: string };
 
 export type RoomAction =
-  | { type: 'send'; text: string; isHost: boolean }
+  /** "/" 로 시작하는 명령어 (채팅에 남지 않는다) */
+  | { type: 'command'; text: string; isHost: boolean }
+  /** 서버를 거친 채팅·시스템 메시지 */
+  | { type: 'receive'; messages: ServerChatMessage[] }
   | { type: 'post'; message: PostedMessage }
   | { type: 'request'; song: Song }
   | { type: 'cancel'; entryId: string }
@@ -85,25 +91,22 @@ function withMessages(state: RoomState, ...messages: ChatMessage[]): RoomState {
   return { ...state, messages: [...state.messages, ...messages].slice(-MAX_MESSAGES) };
 }
 
-/** 방에 남아 있는 음악 상태 (사람이 나가도 방과 함께 유지된다) */
-export type MusicSnapshot = Pick<RoomState, 'now' | 'paused' | 'queue'>;
-
-export const EMPTY_MUSIC: MusicSnapshot = { now: null, paused: false, queue: [] };
-
-export function createRoomState(
-  music: MusicSnapshot = EMPTY_MUSIC,
-  intro = '방을 만들었어요. 초대 링크로 친구를 불러보세요',
-): RoomState {
-  return { ...music, messages: [system(intro)] };
+/** intro: 방을 처음 만들었을 때만 나에게 보여줄 안내 */
+export function createRoomState(me: Me, intro?: string): RoomState {
+  return { me, now: null, paused: false, queue: [], messages: intro ? [system(intro)] : [] };
 }
 
 export function roomReducer(state: RoomState, action: RoomAction): RoomState {
   switch (action.type) {
-    case 'send': {
+    case 'command': {
       const text = action.text.trim();
-      if (!text) return state;
-      if (text.startsWith('/')) return runCommand(state, text, action.isHost);
-      return withMessages(state, toMessage({ kind: 'user', userId: ME.id, nickname: ME.nickname, text }));
+      if (!text.startsWith('/')) return state;
+      return runCommand(state, text, action.isHost);
+    }
+    case 'receive': {
+      const known = new Set(state.messages.map((m) => m.id));
+      const fresh: ChatMessage[] = action.messages.filter((m) => !known.has(m.id)).map(({ seq: _seq, ...m }) => m);
+      return fresh.length > 0 ? withMessages(state, ...fresh) : state;
     }
     case 'post':
       return withMessages(state, toMessage(action.message));
@@ -121,7 +124,7 @@ export function roomReducer(state: RoomState, action: RoomAction): RoomState {
     }
     case 'cancel': {
       const target = state.queue.find((e) => e.entryId === action.entryId);
-      if (!target || target.requesterId !== ME.id) {
+      if (!target || target.requesterId !== state.me.id) {
         return withMessages(state, notice('본인이 신청한 곡만 취소할 수 있어요'));
       }
       return withMessages(
@@ -136,12 +139,13 @@ function requestSong(state: RoomState, song: Song): RoomState {
   const isDuplicate = [state.now, ...state.queue].some((e) => e?.videoId === song.videoId);
   if (isDuplicate) return withMessages(state, notice('이미 신청된 곡이에요'));
 
-  const mine = state.queue.filter((e) => e.requesterId === ME.id).length;
+  const { me } = state;
+  const mine = state.queue.filter((e) => e.requesterId === me.id).length;
   if (mine >= MAX_SONGS_PER_USER) {
     return withMessages(state, notice(`대기큐에는 한 사람당 ${MAX_SONGS_PER_USER}곡까지 신청할 수 있어요`));
   }
 
-  const next: QueuedSong = { ...song, entryId: nextId(), requesterId: ME.id, requesterNickname: ME.nickname };
+  const next: QueuedSong = { ...song, entryId: nextId(), requesterId: me.id, requesterNickname: me.nickname };
   if (!state.now) {
     return withMessages({ ...state, now: next, paused: false }, system(`지금 재생: ${song.title}`));
   }

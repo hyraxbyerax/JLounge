@@ -537,6 +537,19 @@ code {
   gap: var(--space-2);
 }
 
+.member-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 방장에게만: 방장 넘기기 · 내보내기 */
+.member-actions {
+  display: flex;
+  margin-left: auto;
+}
+
 .friend-tag {
   display: inline-flex;
   align-items: center;

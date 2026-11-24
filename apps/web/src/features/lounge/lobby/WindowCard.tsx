@@ -40,7 +40,7 @@ export function WindowCard({ room, onOpen }: Props) {
         <span className="window-count">
           {room.members}/{room.maxMembers}
           {stateLabel && <span className="window-state"> · {stateLabel}</span>}
-          {room.password !== null && <span className="window-state"> · 비밀번호</span>}
+          {room.hasPassword && <span className="window-state"> · 비밀번호</span>}
         </span>
         {state === 'game' ? (
           <span className="window-game">

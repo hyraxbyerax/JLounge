@@ -6,7 +6,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTimeouts } from '../../../../shared/hooks/useTimeouts';
 import { BOT, BOT_LINES, botGuessChance, botWrongGuess } from '../../bot/bot';
-import { ME } from '../../model/room';
 import type { PostedMessage } from '../../model/roomState';
 import { BOT_DRAWINGS, createPlayback } from './botDrawings';
 import {
@@ -34,12 +33,14 @@ const BOT_WORDS = Object.keys(BOT_DRAWINGS);
 const pickWord: PickWord = (drawerId, used) => pickUnused(drawerId === BOT.id ? BOT_WORDS : WORDS, used);
 
 type Options = {
+  /** 이 화면을 쓰는 사람 */
+  meId: string;
   players: string[];
   nicknameOf: (userId: string) => string;
   post: (message: PostedMessage) => void;
 };
 
-export function useCatchMind({ players, nicknameOf, post }: Options) {
+export function useCatchMind({ meId, players, nicknameOf, post }: Options) {
   const [game, setGame] = useState<CatchMindState | null>(null);
   const gameRef = useRef<CatchMindState | null>(null);
   const [strokes, setStrokes] = useState<Stroke[]>([]);
@@ -167,7 +168,7 @@ export function useCatchMind({ players, nicknameOf, post }: Options) {
 
   /* 그림 (그리는 사람만) */
 
-  const myTurnToDraw = game?.phase === 'playing' && game.turn?.drawerId === ME.id && game.turn.revealUntil === null;
+  const myTurnToDraw = game?.phase === 'playing' && game.turn?.drawerId === meId && game.turn.revealUntil === null;
 
   const addStroke = useCallback(
     (stroke: Stroke) => {
@@ -224,7 +225,7 @@ export function useCatchMind({ players, nicknameOf, post }: Options) {
   /* 내가 그리는 차례: 연습 상대가 가끔 맞혀본다. 시간이 지날수록 잘 맞힌다 */
 
   const botGuessKey =
-    drawing && turn.drawerId === ME.id && game!.players.includes(BOT.id) && !turn.guessedIds.includes(BOT.id)
+    drawing && turn.drawerId === meId && game!.players.includes(BOT.id) && !turn.guessedIds.includes(BOT.id)
       ? `${game!.round}:${turn.word}`
       : null;
   useEffect(() => {
@@ -254,7 +255,7 @@ export function useCatchMind({ players, nicknameOf, post }: Options) {
     return () => window.clearTimeout(timer);
   }, [botGuessKey, botSay, guess]);
 
-  const view = useMemo(() => (game ? viewFor(game, ME.id, now) : null), [game, now]);
+  const view = useMemo(() => (game ? viewFor(game, meId, now) : null), [game, meId, now]);
 
   return { game, view, strokes, select, start, quit, toWaiting, guess, addStroke, undo, clear, canDraw: myTurnToDraw };
 }

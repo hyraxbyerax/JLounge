@@ -1,29 +1,42 @@
 import { useState, type FormEvent } from 'react';
+import { errorMessage } from '../../../shared/api/ApiError';
 import { Modal } from '../../../shared/ui/Modal';
-import { MAX_MEMBERS, ME, MIN_MEMBERS, ROOM_NAME_MAX, type RoomSettings } from '../model/room';
+import { MAX_MEMBERS, MIN_MEMBERS, ROOM_NAME_MAX, type RoomSettings } from '../model/room';
+
+type Initial = {
+  name: string;
+  isPublic: boolean;
+  hasPassword: boolean;
+  locked: boolean;
+  maxMembers: number;
+};
 
 type Props = {
   mode: 'create' | 'edit';
-  initial?: RoomSettings;
+  initial?: Initial;
+  /** 새 방 이름 기본값 (예: "졸린 판다의 방") */
+  defaultName?: string;
   /** 지금 방에 있는 인원. 최대 인원은 이보다 작게 할 수 없다 */
   currentMembers?: number;
-  onSubmit: (settings: RoomSettings) => void;
+  /** 서버가 거절하면 그 문장을 창 안에 보여준다 */
+  onSubmit: (settings: RoomSettings) => Promise<void>;
   onClose: () => void;
 };
 
-export function RoomSettingsDialog({ mode, initial, currentMembers = 1, onSubmit, onClose }: Props) {
-  const [name, setName] = useState(initial?.name ?? `${ME.nickname}의 방`);
+export function RoomSettingsDialog({ mode, initial, defaultName = '', currentMembers = 1, onSubmit, onClose }: Props) {
+  const [name, setName] = useState(initial?.name ?? defaultName);
   const [isPublic, setIsPublic] = useState(initial?.isPublic ?? true);
-  const [usePassword, setUsePassword] = useState(initial?.password != null);
+  const [usePassword, setUsePassword] = useState(initial?.hasPassword ?? false);
   const [password, setPassword] = useState('');
   const [locked, setLocked] = useState(initial?.locked ?? false);
   const [maxMembers, setMaxMembers] = useState(String(initial?.maxMembers ?? 8));
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   const minAllowed = Math.max(MIN_MEMBERS, currentMembers);
-  const hasOldPassword = initial?.password != null;
+  const hasOldPassword = initial?.hasPassword ?? false;
 
-  function submit(e: FormEvent) {
+  async function submit(e: FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed) return setError('방 이름을 입력해주세요');
@@ -35,9 +48,17 @@ export function RoomSettingsDialog({ mode, initial, currentMembers = 1, onSubmit
     if (max < currentMembers) return setError(`지금 ${currentMembers}명이 있어서 그보다 적게 할 수 없어요`);
 
     if (usePassword && !password && !hasOldPassword) return setError('비밀번호를 입력해주세요');
-    const nextPassword = !usePassword ? null : password || initial?.password || null;
+    // 비밀번호: 끄면 null(없애기), 새로 쓰면 그 값, 켜둔 채 비워두면 그대로(undefined)
+    const nextPassword = !usePassword ? null : password || (mode === 'create' ? null : undefined);
 
-    onSubmit({ name: trimmed, isPublic, password: nextPassword, locked, maxMembers: max });
+    setBusy(true);
+    setError(null);
+    try {
+      await onSubmit({ name: trimmed, isPublic, password: nextPassword, locked, maxMembers: max });
+    } catch (err) {
+      setError(errorMessage(err));
+      setBusy(false);
+    }
   }
 
   return (
@@ -121,7 +142,7 @@ export function RoomSettingsDialog({ mode, initial, currentMembers = 1, onSubmit
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             취소
           </button>
-          <button type="submit" className="btn btn-primary">
+          <button type="submit" className="btn btn-primary" disabled={busy}>
             {mode === 'create' ? '방 만들기' : '저장'}
           </button>
         </div>
