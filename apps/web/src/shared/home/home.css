@@ -1,4 +1,5 @@
 .home {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -6,6 +7,21 @@
   gap: var(--space-3);
   padding: var(--space-12) var(--space-4) 0;
   text-align: center;
+}
+
+/* 오른쪽 위: 로그인 / 닉네임·로그아웃 */
+.home-account {
+  position: absolute;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.home-account-name {
+  font-size: var(--text-14);
+  font-weight: 600;
 }
 
 .home-title {
@@ -54,7 +70,8 @@
   box-shadow: 0 0 40px color-mix(in srgb, var(--color-light) 35%, transparent);
 }
 
-.is-schedule .entrance-door {
+/* 로그인 전에는 불 꺼진 문 + 자물쇠, 로그인하면 불이 켜진다 */
+.is-schedule:not(.is-open) .entrance-door {
   background: var(--color-surface-2);
   box-shadow: none;
   color: var(--color-text-muted);
@@ -74,33 +91,12 @@
   font-size: var(--text-12);
 }
 
-/* 스케줄 관리 자리 (낮 모드) */
-.schedule-page {
-  display: grid;
-  place-items: center;
-  min-height: 100%;
-  padding: var(--space-4);
-  background: var(--color-bg);
-  color: var(--color-text);
-}
-
-.schedule-card {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  width: min(100%, 400px);
-  padding: var(--space-8);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface);
-  text-align: center;
-}
-
-.schedule-title {
-  font-size: var(--text-28);
-  font-weight: 800;
-}
-
 @media (max-width: 767px) {
+  /* 오른쪽 위 로그인 버튼과 제목이 겹치지 않게 */
+  .home {
+    padding-top: calc(var(--space-12) + var(--space-8));
+  }
+
   .home-title {
     font-size: var(--text-28);
   }

@@ -70,7 +70,7 @@ export function Lobby({ rooms, onEnter, onCreate, onHome, onSchedule }: Props) {
             방 만들기
           </button>
           <button type="button" className="btn btn-ghost" onClick={onSchedule}>
-            스케줄 관리
+            캠퍼스 플래너
           </button>
         </div>
       </header>

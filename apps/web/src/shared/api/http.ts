@@ -1,18 +1,10 @@
 /*
  * 서버 HTTP API 호출. 세션 토큰을 붙이고, 응답 형식 { data } / { error } 를 풀어준다.
  */
+import { ApiError, type ApiResponse } from './ApiError';
 import { clearSession, getSession, requestGuestSession } from './session';
 
-export class ApiError extends Error {
-  readonly code: string;
-
-  constructor(code: string, message: string) {
-    super(message);
-    this.code = code;
-  }
-}
-
-type ApiResponse<T> = { data: T } | { error: { code: string; message: string } };
+export { ApiError } from './ApiError';
 
 async function request<T>(path: string, token: string): Promise<{ status: number; body: ApiResponse<T> }> {
   const res = await fetch(path, { headers: { authorization: `Bearer ${token}` } });
@@ -28,6 +20,8 @@ export async function apiGet<T>(path: string): Promise<T> {
     session = await requestGuestSession();
     res = await request<T>(path, session.token);
   }
-  if ('error' in res.body) throw new ApiError(res.body.error.code, res.body.error.message);
+  if ('error' in res.body) {
+    throw new ApiError(res.body.error.code, res.body.error.message, res.status, res.body.error.fields);
+  }
   return res.body.data;
 }

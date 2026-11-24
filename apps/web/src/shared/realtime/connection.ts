@@ -3,9 +3,17 @@
  * - 서버가 여러 대여도 되도록 websocket 전송만 쓴다.
  * - 끊기면 자동으로 다시 연결한다. 다시 연결되면 화면은 방 상태를 새로 받는다 (1단계부터).
  * - 토큰이 거절되면 게스트 세션을 새로 받아 다시 연결한다.
+ * - 로그인·로그아웃하면 바뀐 사람(토큰)으로 다시 연결한다.
  */
 import { io, type Socket } from 'socket.io-client';
-import { clearSession, getSession, requestGuestSession, type SessionUser } from '../api/session';
+import {
+  clearSession,
+  getMemberSession,
+  getSession,
+  onSessionChange,
+  requestGuestSession,
+  type SessionUser,
+} from '../api/session';
 
 export type ConnectionStatus = 'connecting' | 'connected' | 'reconnecting' | 'offline';
 
@@ -67,7 +75,10 @@ export async function connect(): Promise<Socket> {
   s.on('connect_error', async (err) => {
     setStatus(status === 'connected' || status === 'reconnecting' ? 'reconnecting' : 'offline');
     if (err.message === 'UNAUTHORIZED') {
+      const wasMember = getMemberSession() !== null;
       clearSession();
+      // 회원 토큰이 만료된 경우: 로그아웃 알림(onSessionChange)이 새 게스트로 다시 연결한다
+      if (wasMember) return;
       try {
         const fresh = await requestGuestSession();
         user = fresh.user;
@@ -81,6 +92,18 @@ export async function connect(): Promise<Socket> {
 
   return s;
 }
+
+onSessionChange(async () => {
+  if (!socket) return;
+  try {
+    const session = await getSession();
+    user = session.user;
+    socket.auth = { token: session.token };
+    socket.disconnect().connect();
+  } catch {
+    // 서버가 아직 안 떠 있으면 다음 자동 재시도에 맡긴다
+  }
+});
 
 export function getStatus(): ConnectionStatus {
   return status;

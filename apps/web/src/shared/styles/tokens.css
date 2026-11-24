@@ -15,8 +15,14 @@
   /* 강조색을 글자로 쓸 때 (바탕 위에서 읽히도록 더 진하게) */
   --color-light-ink: #8a4b25;
   --color-sofa: #7e9476;
+  /* 보조 강조색을 글자로 쓸 때 */
+  --color-sofa-ink: #55634c;
   --color-online: #33694a;
   --color-danger: #9a3a33;
+  /* 곧 마감 (캠퍼스 플래너) */
+  --color-warn: #7d5a12;
+  /* 차분한 파랑 (달력 토요일 등) */
+  --color-cool: #3f5f7f;
 
   --font-ui: 'SUIT Variable', 'SUIT', system-ui, sans-serif;
   --font-sign: 'Gowun Batang', serif;
@@ -68,6 +74,9 @@
   --color-light-text: #2a2110;
   --color-light-ink: #8a5a14;
   --color-sofa: #7a4a8c;
+  --color-sofa-ink: #6a3d7a;
   --color-online: #2e9c7e;
   --color-danger: #d14b63;
+  --color-warn: #7d5a12;
+  --color-cool: #3f5f7f;
 }

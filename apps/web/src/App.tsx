@@ -12,11 +12,12 @@ import {
 } from './features/lounge/model/room';
 import { EMPTY_MUSIC, type MusicSnapshot } from './features/lounge/model/roomState';
 import { Room } from './features/lounge/room/Room';
+import { PlannerApp } from './features/schedule/PlannerApp';
+import { LoginPage } from './shared/auth/LoginPage';
 import { prefersReducedMotion } from './shared/hooks/useMediaQuery';
 import { ConnectionBanner } from './shared/realtime/ConnectionBanner';
 import { useConnection } from './shared/realtime/useConnection';
 import { HomePage } from './shared/home/HomePage';
-import { SchedulePlaceholder } from './shared/home/SchedulePlaceholder';
 
 /** 방에 남아 있는 상태. 서버를 붙이면 Redis(room:{id}, :members, :now, :queue)가 갖는다 */
 type LiveRoom = {
@@ -27,7 +28,11 @@ type LiveRoom = {
 
 // 화면 전환은 아직 라우터 없이 상태로 한다 (주소 /room/{코드} 연결은 0단계 이후)
 type Screen =
-  { name: 'home' } | { name: 'lobby' } | { name: 'room'; room: LiveRoom; created: boolean } | { name: 'schedule' };
+  | { name: 'home' }
+  | { name: 'login' }
+  | { name: 'lobby' }
+  | { name: 'room'; room: LiveRoom; created: boolean }
+  | { name: 'schedule' };
 
 const me: Member = { id: ME.id, nickname: ME.nickname, isHost: false, isFriend: false };
 
@@ -89,11 +94,19 @@ export function App() {
   }
 
   const toLobby = () => setScreen({ name: 'lobby' });
+  const toHome = () => setScreen({ name: 'home' });
 
   return (
     <>
       <ConnectionBanner status={connection} />
-      {screen.name === 'home' && <HomePage onLounge={toLobby} onSchedule={() => setScreen({ name: 'schedule' })} />}
+      {screen.name === 'home' && (
+        <HomePage
+          onLounge={toLobby}
+          onSchedule={() => setScreen({ name: 'schedule' })}
+          onLogin={() => setScreen({ name: 'login' })}
+        />
+      )}
+      {screen.name === 'login' && <LoginPage onDone={toHome} onBack={toHome} />}
       {screen.name === 'lobby' && (
         <Lobby
           rooms={rooms.map((r) => r.info)}
@@ -114,7 +127,7 @@ export function App() {
           onLeave={leaveRoom}
         />
       )}
-      {screen.name === 'schedule' && <SchedulePlaceholder onBack={toLobby} />}
+      {screen.name === 'schedule' && <PlannerApp onBack={toHome} />}
       {zoom && <WindowZoom from={zoom.from} onDone={finishZoom} />}
     </>
   );

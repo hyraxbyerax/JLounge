@@ -10,9 +10,10 @@
 | 공개방 입장, 코드·링크 입장 | 가능 | 가능 |
 | 친구 추가·초대, 친구 초대로 입장(비밀번호 생략) | 가능 | 불가 |
 | 활동 상태 표시 | 가능 | 불가 |
-| 스케줄 관리 (스케줄러 파트) | 가능 | 불가 → 로그인 화면으로 안내 |
+| 캠퍼스 플래너 (일정·시간표, 스케줄러 팀원 작품) | 가능 | 불가 → 로그인 화면으로 안내 (서버도 403으로 막음) |
 
 - 게스트: 서버가 `guest_` + 무작위 문자열로 임시 ID와 닉네임을 발급. 접속 종료 시 소멸.
+- 로그인(회원): 이메일 + 비밀번호(8자 이상) + 닉네임(20자까지)으로 가입. 비밀번호는 scrypt 해시로 저장. 로그인은 새로고침·재방문에도 7일 유지되고, 라운지와 캠퍼스 플래너가 같은 로그인을 쓴다. 로그인 버튼은 메인 화면 오른쪽 위와 캠퍼스 플래너 입구 두 곳. AWS를 연결할 때 Cognito로 바꾼다 (지금 가입한 계정은 옮겨가지 않음).
 - 게스트로 방에 있다가 로그인하면, 로그인한 ID로 **같은 방에 자동 재입장**시킨다. 방장이었다면 방장도 넘긴다.
 
 ## 2. 로비와 방 목록
@@ -163,7 +164,8 @@
 
 ## 부록 B. PostgreSQL 테이블 (초안)
 
-- `users` (공유): `user_id` text PK, `nickname` text, `friend_code` text unique, `presence_visibility` text (`all`/`online`/`hidden`), `created_at` timestamptz
+- `users` (공유): `user_id` text PK, `nickname` text, `friend_code` text unique, `presence_visibility` text (`all`/`online`/`hidden`), `email` text (소문자 기준 unique), `password_hash` text, `auth_sub` text unique (Cognito용), `created_at`·`updated_at` timestamptz
+- `schedules`, `timetable_entries` (캠퍼스 플래너): `user_id`로 `users` 참조, 사용자 삭제 시 함께 삭제
 - `friendships`: `requester_id`, `addressee_id` (복합 PK, `users` 참조), `status` (`pending`/`accepted`/`blocked`), `created_at`
 - `game_results` [선택]: `id`, `user_id`, `game_type`, `score`, `rank`, `played_at`
 
