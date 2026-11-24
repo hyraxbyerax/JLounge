@@ -3,18 +3,20 @@
  * 색·글꼴 값은 이 파일에만 쓰고, 화면은 변수만 쓴다.
  */
 
-/* 밤 모드 (라운지 기본) */
+/* 라운지 기본: 오트밀 & 모카 (낮도 밤도 아닌 중간 톤) */
 :root {
-  --color-bg: #1e2140;
-  --color-surface: #2b2f57;
-  --color-surface-2: #363b6b;
-  --color-text: #eceaf7;
-  --color-text-muted: #a9a8c9;
-  --color-light: #ffc86b;
-  --color-light-text: #2a2110;
-  --color-sofa: #8c5a9e;
-  --color-online: #7fd8be;
-  --color-danger: #f2768c;
+  --color-bg: #e9e2d6;
+  --color-surface: #f4efe6;
+  --color-surface-2: #dcd3c4;
+  --color-text: #3b3028;
+  --color-text-muted: #675a4d;
+  --color-light: #b87444;
+  --color-light-text: #1c120a;
+  /* 강조색을 글자로 쓸 때 (바탕 위에서 읽히도록 더 진하게) */
+  --color-light-ink: #8a4b25;
+  --color-sofa: #7e9476;
+  --color-online: #33694a;
+  --color-danger: #9a3a33;
 
   --font-ui: 'SUIT Variable', 'SUIT', system-ui, sans-serif;
   --font-sign: 'Gowun Batang', serif;
@@ -44,7 +46,7 @@
 
   --duration-enter: 400ms;
 
-  /* 캐치마인드 그림판 잉크 (그림 내용 색이라 밤·낮 모드와 관계없이 같다) */
+  /* 캐치마인드 그림판 잉크 (그림 내용 색이라 화면 테마와 관계없이 같다) */
   --ink-paper: #f7f5ef;
   --ink-black: #26283f;
   --ink-red: #e0475b;
@@ -64,6 +66,7 @@
   --color-text-muted: #5b5f80;
   --color-light: #e9a43b;
   --color-light-text: #2a2110;
+  --color-light-ink: #8a5a14;
   --color-sofa: #7a4a8c;
   --color-online: #2e9c7e;
   --color-danger: #d14b63;

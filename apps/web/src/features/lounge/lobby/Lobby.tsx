@@ -41,7 +41,7 @@ export function Lobby({ rooms, onEnter, onCreate, onHome, onSchedule }: Props) {
   }
 
   return (
-    <div className="lobby night-sky">
+    <div className="lobby soft-light">
       <header className="lobby-header">
         <h1 className="lobby-title sign">
           <button type="button" className="title-link" onClick={onHome}>

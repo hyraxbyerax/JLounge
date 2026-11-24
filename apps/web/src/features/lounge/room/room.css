@@ -203,11 +203,11 @@
 }
 
 .music-note {
-  color: var(--color-light);
+  color: var(--color-light-ink);
 }
 
 .music-label {
-  color: var(--color-light);
+  color: var(--color-light-ink);
   font-size: var(--text-12);
   font-weight: 600;
 }
@@ -873,7 +873,7 @@ code {
 }
 
 .tv-paused-icon {
-  color: var(--color-light);
+  color: var(--color-light-ink);
   font-size: var(--text-40);
   line-height: 1;
 }

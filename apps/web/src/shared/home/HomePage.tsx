@@ -6,10 +6,10 @@ type Props = {
   onSchedule: () => void;
 };
 
-/** 사이트 첫 화면: 밤 건물의 두 입구 (라운지 / 스케줄 관리) */
+/** 사이트 첫 화면: 건물의 두 입구 (라운지 / 스케줄 관리) */
 export function HomePage({ onLounge, onSchedule }: Props) {
   return (
-    <div className="home night-sky">
+    <div className="home soft-light">
       <h1 className="home-title sign">전북대학교 휴식 라운지</h1>
       <p className="home-sub">공강 시간, 불 켜진 방에 잠깐 들러요</p>
 

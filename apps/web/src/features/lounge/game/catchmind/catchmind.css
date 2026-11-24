@@ -117,7 +117,7 @@
 }
 
 .rule-row dt {
-  color: var(--color-light);
+  color: var(--color-light-ink);
   font-size: var(--text-14);
   font-weight: 600;
 }

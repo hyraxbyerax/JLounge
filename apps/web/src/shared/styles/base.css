@@ -69,18 +69,13 @@ input {
   border: 0;
 }
 
-/* 밤하늘 배경 (별 몇 개) */
-.night-sky {
+/* 로비·메인 배경: 창가로 들어오는 은은한 햇살 */
+.soft-light {
   min-height: 100%;
   background:
-    radial-gradient(1.5px 1.5px at 8% 14%, var(--color-text-muted) 50%, transparent 51%),
-    radial-gradient(1px 1px at 22% 32%, var(--color-text-muted) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 41% 9%, var(--color-text-muted) 50%, transparent 51%),
-    radial-gradient(1px 1px at 63% 22%, var(--color-text-muted) 50%, transparent 51%),
-    radial-gradient(1.5px 1.5px at 78% 6%, var(--color-text-muted) 50%, transparent 51%),
-    radial-gradient(1px 1px at 91% 27%, var(--color-text-muted) 50%, transparent 51%), var(--color-bg);
-  background-repeat: no-repeat;
-  background-size: 100% 320px;
+    radial-gradient(60% 50% at 15% 0%, color-mix(in srgb, var(--color-light) 14%, transparent), transparent 70%),
+    radial-gradient(50% 40% at 90% 10%, color-mix(in srgb, var(--color-sofa) 16%, transparent), transparent 70%),
+    var(--color-bg);
 }
 
 /* 버튼 */
