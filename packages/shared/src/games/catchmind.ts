@@ -3,7 +3,7 @@
  * 서버를 붙일 때 이 파일을 그대로 서버로 옮겨 판정에 쓴다.
  * 시간이 흐르는 처리는 tick()이 "종료 예정 시각"을 확인하는 방식이다 (서버 메모리 타이머 없이).
  */
-import { rankPlayers, type GameCommon, type RankEntry } from '../types';
+import { rankPlayers, type GameCommon, type RankEntry } from './common.ts';
 
 export const CATCHMIND_RULES = {
   totalRounds: 6,
@@ -27,6 +27,8 @@ export type CatchMindTurn = {
   guessedIds: string[];
   /** 정답 공개 중이면 공개가 끝나는 시각 */
   revealUntil: number | null;
+  /** 첫 글자 힌트를 알렸는지 (서버가 그 순간 모두에게 다시 보내려고) */
+  hintShown?: boolean;
 };
 
 export type CatchMindState = GameCommon & {
@@ -39,6 +41,8 @@ export type CatchMindEvent =
   | { type: 'started' }
   | { type: 'roundStarted'; round: number; drawerId: string }
   | { type: 'correct'; userId: string; points: number }
+  /** 남은 시간이 줄어 첫 글자 힌트가 열렸다 */
+  | { type: 'hint' }
   | { type: 'roundEnded'; word: string; guessedIds: string[] }
   | { type: 'finished'; ranking: RankEntry[] };
 
@@ -80,7 +84,7 @@ export function canStart(state: CatchMindState): boolean {
   return state.phase !== 'playing' && state.players.length >= 2;
 }
 
-export function startGame(state: CatchMindState, now: number, pickWord: PickWord): Step {
+export function startGame(state: CatchMindState, now: number, pickWord: PickWord, present?: string[]): Step {
   if (!canStart(state)) return { state, events: [] };
   const fresh: CatchMindState = {
     ...state,
@@ -89,12 +93,21 @@ export function startGame(state: CatchMindState, now: number, pickWord: PickWord
     round: 0,
     usedWords: [],
   };
-  const next = beginRound(fresh, 1, now, pickWord);
+  const next = beginRound(fresh, 1, now, pickWord, present);
   return { state: next.state, events: [{ type: 'started' }, ...next.events] };
 }
 
-function beginRound(state: CatchMindState, round: number, now: number, pickWord: PickWord): Step {
-  const drawerId = state.players[(round - 1) % state.players.length]!;
+/** 라운드 순서대로 그릴 사람. 방을 나간 사람(present 에 없음)은 건너뛴다 */
+function drawerFor(players: string[], round: number, present?: string[]): string {
+  for (let i = 0; i < players.length; i++) {
+    const candidate = players[(round - 1 + i) % players.length]!;
+    if (!present || present.includes(candidate)) return candidate;
+  }
+  return players[(round - 1) % players.length]!;
+}
+
+function beginRound(state: CatchMindState, round: number, now: number, pickWord: PickWord, present?: string[]): Step {
+  const drawerId = drawerFor(state.players, round, present);
   const word = pickWord(drawerId, state.usedWords);
   return {
     state: {
@@ -168,16 +181,20 @@ function endRound(state: CatchMindState, now: number): Step {
 }
 
 /** 주기적으로 불러서 시간이 지난 라운드를 끝내고 다음 라운드로 넘긴다 */
-export function tick(state: CatchMindState, now: number, pickWord: PickWord): Step {
+export function tick(state: CatchMindState, now: number, pickWord: PickWord, present?: string[]): Step {
   if (state.phase !== 'playing' || !state.turn) return { state, events: [] };
   const { turn } = state;
 
   if (turn.revealUntil === null) {
-    return now >= turn.endsAt ? endRound(state, now) : { state, events: [] };
+    if (now >= turn.endsAt) return endRound(state, now);
+    if (!turn.hintShown && turn.endsAt - now <= CATCHMIND_RULES.hintAtRemainingMs) {
+      return { state: { ...state, turn: { ...turn, hintShown: true } }, events: [{ type: 'hint' }] };
+    }
+    return { state, events: [] };
   }
   if (now < turn.revealUntil) return { state, events: [] };
 
-  if (state.round < state.totalRounds) return beginRound(state, state.round + 1, now, pickWord);
+  if (state.round < state.totalRounds) return beginRound(state, state.round + 1, now, pickWord, present);
 
   const finished: CatchMindState = { ...state, phase: 'result', turn: null };
   return { state: finished, events: [{ type: 'finished', ranking: rankPlayers(finished) }] };
@@ -185,6 +202,12 @@ export function tick(state: CatchMindState, now: number, pickWord: PickWord): St
 
 export function backToWaiting(state: CatchMindState): CatchMindState {
   return { ...state, phase: 'waiting', round: 0, turn: null };
+}
+
+/** 그리는 사람이 방을 나가면 그 라운드는 바로 끝내고 정답을 공개한다 */
+export function drawerLeft(state: CatchMindState, userId: string, now: number): Step {
+  if (!isDrawing(state) || state.turn.drawerId !== userId) return { state, events: [] };
+  return endRound(state, now);
 }
 
 /* 보는 사람별 화면 정보 — 받을 자격이 없는 정보(제시어)는 넣지 않는다 */

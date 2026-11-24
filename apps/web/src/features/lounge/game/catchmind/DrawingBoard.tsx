@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type PointerEvent } from 'react';
-import { BOARD_HEIGHT, BOARD_WIDTH, INKS, type Ink, type Point, type Stroke } from './drawing';
+import { BOARD_HEIGHT, BOARD_WIDTH, INKS, type Ink, type Point, type Stroke } from '@lounge/shared';
 
 type Props = {
   strokes: Stroke[];

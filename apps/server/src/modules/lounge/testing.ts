@@ -4,7 +4,7 @@
  */
 import { createServer, type Server as HttpServer } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { AckResult, ClientToServerEvents, ServerToClientEvents } from '@lounge/shared';
+import type { AckResult, ClientToServerEvents, GameRandom, ServerToClientEvents } from '@lounge/shared';
 import { io as connectClient, type Socket } from 'socket.io-client';
 import type { AuthUser } from '../../shared/auth/AuthProvider.ts';
 import { createLocalAuth } from '../../shared/auth/localAuth.ts';
@@ -18,7 +18,10 @@ import { createSampleSearch } from './music/sampleSearch.ts';
 
 export type TestClient = Socket<ServerToClientEvents, ClientToServerEvents> & { user: AuthUser };
 
-export function createHarness(redisUrl: string, options: { musicSearch?: MusicSearchProvider } = {}) {
+export function createHarness(
+  redisUrl: string,
+  options: { musicSearch?: MusicSearchProvider; gameRandom?: GameRandom } = {},
+) {
   const auth = createLocalAuth('t'.repeat(32));
   const logger = createLogger('error');
   const run = Math.random().toString(36).slice(2, 8);
@@ -50,6 +53,7 @@ export function createHarness(redisUrl: string, options: { musicSearch?: MusicSe
         musicSearch: options.musicSearch ?? createSampleSearch(),
         logger,
         trustProxy: false,
+        gameRandom: options.gameRandom,
       });
       await new Promise<void>((r) => http.listen(0, r));
       base = `http://localhost:${(http.address() as AddressInfo).port}`;

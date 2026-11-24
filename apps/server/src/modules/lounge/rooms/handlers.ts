@@ -63,8 +63,24 @@ type Deps = {
   now?: () => number;
 };
 
+/** 게임처럼 방 위에 얹는 기능이 끼어드는 자리 */
+export type RoomExtension = {
+  /** 채팅을 먼저 본다. consumed 면 채팅으로 올리지 않는다(예: 게임 정답). quiet 면 연습 상대가 잡담으로 대답하지 않는다. 거절은 AppError */
+  beforeChat?: (socket: IoSocket, roomId: string, text: string) => Promise<{ consumed: boolean; quiet?: boolean }>;
+  /** 누가 나갔을 때 (deleted: 사람이 없어 방이 지워짐) */
+  afterLeave?: (roomId: string, userId: string, deleted: boolean) => Promise<void>;
+  /** 들어온 사람에게 함께 줄 것 */
+  joinExtras?: (roomId: string, userId: string) => Promise<Partial<RoomJoined>>;
+};
+
 export function createRoomHandlers({ io, store, music, counter, logger, trustProxy, now = Date.now }: Deps) {
   const iso = () => new Date(now()).toISOString();
+  const extensions: RoomExtension[] = [];
+
+  async function extras(roomId: string, userId: string): Promise<Partial<RoomJoined>> {
+    const parts = await Promise.all(extensions.map((ext) => ext.joinExtras?.(roomId, userId) ?? {}));
+    return Object.assign({}, ...parts) as Partial<RoomJoined>;
+  }
 
   async function publishLobby() {
     io.to(LOBBY_CHANNEL).emit('lobby:rooms', await store.listPublic());
@@ -90,11 +106,13 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
   async function afterLeave(roomId: string, result: LeaveResult, text: (nickname: string) => string) {
     if (result.status === 'DELETED') {
       await music.clearRoom(roomId);
+      for (const ext of extensions) await ext.afterLeave?.(roomId, result.left.userId, true);
       await publishLobby();
       return;
     }
     if (result.status !== 'LEFT' && result.status !== 'HOST_CHANGED') return;
     await system(roomId, text(result.left.nickname));
+    for (const ext of extensions) await ext.afterLeave?.(roomId, result.left.userId, false);
     if (result.status === 'HOST_CHANGED') {
       const view = await store.view(roomId);
       const host = view?.members.find((m) => m.userId === result.newHostId);
@@ -218,7 +236,13 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
         });
         await enter(socket, id);
         if (settings.isPublic) await publishLobby();
-        return { room: (await store.view(id))!, messages: [], music: await music.state(id) };
+        return {
+          room: (await store.view(id))!,
+          messages: [],
+          music: await music.state(id),
+          game: null,
+          ...(await extras(id, me().userId)),
+        };
       }),
     );
 
@@ -248,7 +272,13 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
         }
         const room = await store.view(roomId);
         if (!room) throw fail('ROOM_NOT_FOUND', JOIN_ERRORS.NOT_FOUND!);
-        return { room, messages, music: await music.state(roomId) };
+        return {
+          room,
+          messages,
+          music: await music.state(roomId),
+          game: null,
+          ...(await extras(roomId, me().userId)),
+        };
       }),
     );
 
@@ -350,6 +380,12 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
         const { text } = validate(chatSendInput, input);
         const used = await counter.hit(`room:${roomId}:chatrate:${me().userId}`, CHAT_BURST_WINDOW_SEC);
         if (used > CHAT_BURST_LIMIT) throw fail('CHAT_TOO_FAST', '잠깐 천천히 보내주세요');
+        let quiet = false;
+        for (const ext of extensions) {
+          const seen = await ext.beforeChat?.(socket, roomId, text);
+          if (seen?.consumed) return null;
+          quiet ||= seen?.quiet ?? false;
+        }
         const saved = await say(roomId, {
           kind: 'user',
           userId: me().userId,
@@ -358,7 +394,7 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
           sentAt: iso(),
         });
         if (!saved) throw fail('ROOM_NOT_FOUND', '방이 없어졌어요');
-        if (await store.hasBot(roomId, BOT.id)) {
+        if (!quiet && (await store.hasBot(roomId, BOT.id))) {
           const reply = botReply(text);
           if (reply) {
             await say(roomId, { kind: 'user', userId: BOT.id, nickname: BOT.nickname, text: reply, sentAt: iso() });
@@ -383,6 +419,9 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
     register,
     expire,
     stillConnected,
+    extend(ext: RoomExtension) {
+      extensions.push(ext);
+    },
     // 음악·게임 처리도 같은 방식(응답 형식, 시스템 메시지, 로비 갱신)을 쓰도록 내준다
     respond,
     requireRoom,

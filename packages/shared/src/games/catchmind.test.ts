@@ -2,13 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   CATCHMIND_RULES,
   createCatchMind,
+  drawerLeft,
   startGame,
   submitGuess,
   tick,
   viewFor,
   type CatchMindState,
   type PickWord,
-} from './catchmind';
+} from './catchmind.ts';
 
 const { roundMs, revealMs, totalRounds } = CATCHMIND_RULES;
 const pickWord: PickWord = (_drawer, used) => `단어${used.length + 1}`;
@@ -73,7 +74,7 @@ describe('정답 판정', () => {
 describe('시간 흐름', () => {
   it('시간이 다 되면 라운드가 끝나고, 공개 시간이 지나면 다음 사람이 그린다', () => {
     const s = started();
-    expect(tick(s, roundMs - 1, pickWord).state).toBe(s);
+    expect(tick(s, roundMs - CATCHMIND_RULES.hintAtRemainingMs - 1, pickWord).state).toBe(s);
 
     const ended = tick(s, roundMs, pickWord);
     expect(ended.events[0]).toMatchObject({ type: 'roundEnded', word: '단어1', guessedIds: [] });
@@ -82,6 +83,21 @@ describe('시간 흐름', () => {
     expect(next.state.round).toBe(2);
     expect(next.state.turn?.drawerId).toBe('b');
     expect(next.state.turn?.word).toBe('단어2');
+  });
+
+  it('남은 시간이 힌트 시점이 되면 한 번만 알린다 (서버가 그때 모두에게 다시 보낸다)', () => {
+    const at = roundMs - CATCHMIND_RULES.hintAtRemainingMs;
+    const hinted = tick(started(), at, pickWord);
+    expect(hinted.events).toEqual([{ type: 'hint' }]);
+    expect(tick(hinted.state, at + 1000, pickWord).events).toEqual([]);
+  });
+
+  it('방을 나간 사람의 차례는 건너뛰고, 그리던 사람이 나가면 라운드를 바로 끝낸다', () => {
+    const s = startGame(createCatchMind(['a', 'b', 'c']), 0, pickWord, ['b', 'c']).state;
+    expect(s.turn?.drawerId).toBe('b');
+    const left = drawerLeft(s, 'b', 1000);
+    expect(left.events[0]).toMatchObject({ type: 'roundEnded' });
+    expect(drawerLeft(s, 'c', 1000).events).toEqual([]);
   });
 
   it('마지막 라운드가 끝나면 결과 단계가 되고 순위를 알려준다', () => {

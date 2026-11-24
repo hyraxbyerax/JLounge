@@ -10,6 +10,9 @@ export type SocketData = { user: AuthUser };
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 export type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 
+/** 한 사람의 모든 탭(다른 서버에 붙은 것 포함)에 보낼 때 쓰는 채널 */
+export const userChannel = (userId: string) => `user:${userId}`;
+
 type Options = {
   httpServer: HttpServer;
   auth: AuthProvider;
@@ -43,6 +46,8 @@ export function createSocketServer({ httpServer, auth, redis, corsOrigins, logge
   });
 
   io.on('connection', (socket) => {
+    // 사람마다 채널 하나: 그 사람에게만 보낼 것(게임 제시어, 친구 알림)을 서버가 여러 대여도 보낼 수 있게
+    void socket.join(userChannel(socket.data.user.userId));
     const log = logger.child({ socketId: socket.id, userId: socket.data.user.userId });
     log.debug('소켓 연결');
     socket.on('disconnect', (reason) => log.debug('소켓 연결 끊김', { reason }));

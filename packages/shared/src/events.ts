@@ -12,6 +12,9 @@ import type {
   RoomView,
   ServerChatMessage,
 } from './lounge.ts';
+import type { GameType } from './games/common.ts';
+import type { Stroke } from './games/drawing.ts';
+import type { GamePrivate, GameView } from './games/index.ts';
 import type { MusicCommandInput, MusicState } from './music.ts';
 
 export type AckResult<T> = { data: T } | { error: { code: string; message: string } };
@@ -47,6 +50,15 @@ export type ClientToServerEvents = {
   'music:seek': (input: { positionSec: number }, ack: Ack<null>) => void;
   /** 브라우저에서 재생할 수 없는 영상이었다 (지금 곡이 아직 그 곡이면 다음 곡으로) */
   'music:failed': (input: { entryId: string }) => void;
+
+  /** 방장: 게임 고르기 (대기 화면이 열린다) / 시작·한 판 더 / 닫기(/endgame 포함) */
+  'game:select': (input: { type: GameType }, ack: Ack<null>) => void;
+  'game:start': (ack: Ack<null>) => void;
+  'game:quit': (ack: Ack<null>) => void;
+  /** 그리는 사람만: 한 획 / 되돌리기 / 전부 지우기 */
+  'game:stroke': (stroke: Stroke, ack: Ack<null>) => void;
+  'game:undo': (ack: Ack<null>) => void;
+  'game:clear': (ack: Ack<null>) => void;
 };
 
 export type ServerToClientEvents = {
@@ -58,4 +70,11 @@ export type ServerToClientEvents = {
   'chat:message': (message: ServerChatMessage & { roomId: string }) => void;
   /** 재생 상태·대기큐가 바뀌었을 때 (전체를 다시 보낸다) */
   'music:state': (music: MusicState & { roomId: string }) => void;
+  /** 게임 상태 (모두에게, 숨길 것은 빼고). 게임이 닫히면 view 가 null */
+  'game:state': (info: { roomId: string; view: GameView | null }) => void;
+  /** 나에게만: 캐치마인드 제시어 (그리는 사람·맞힌 사람) */
+  'game:private': (info: { roomId: string; private: GamePrivate }) => void;
+  /** 그림: 한 획 더 / 전체 다시 (새 라운드·되돌리기·지우기) */
+  'game:stroke': (info: { roomId: string; stroke: Stroke }) => void;
+  'game:strokes': (info: { roomId: string; strokes: Stroke[] }) => void;
 };

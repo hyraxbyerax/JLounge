@@ -4,22 +4,28 @@ import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
 import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
 import { LockIcon } from '../../../shared/ui/icons';
 import { Toast, useNotice } from '../../../shared/ui/Toast';
-import { BOT } from '../bot/bot';
+import { BOT, type GameType } from '@lounge/shared';
 import { CatchMindPanel } from '../game/catchmind/CatchMindPanel';
-import { useCatchMind } from '../game/catchmind/useCatchMind';
+import { ChosungPanel } from '../game/chosung/ChosungPanel';
 import { GamePickerDialog } from '../game/GamePickerDialog';
 import { toMembers, type Me, type Member, type RoomSettings } from '../model/room';
 import { createRoomState, parseCommand, roomReducer, type PostedMessage } from '../model/roomState';
 import {
   callBot,
   cancelSong,
+  clearStrokes,
   kickMember,
   musicCommand,
+  quitGame,
   reportUnplayable,
   requestSong,
   seekMusic,
+  selectGame,
   sendChat,
+  sendStroke,
+  startGame,
   transferHost,
+  undoStroke,
   updateRoom,
   type RoomSession,
 } from '../net/loungeClient';
@@ -81,27 +87,24 @@ export function Room({ session, me, created, onLeave }: Props) {
   const post = useCallback((message: PostedMessage) => dispatch({ type: 'post', message }), []);
   const tell = useCallback((text: string) => post({ kind: 'private', text }), [post]);
 
-  // 3단계 전까지 캐치마인드는 방장 화면 안에서 "방장 + 연습 상대"끼리만 (docs/lounge-spec.md 8장)
-  const players = useMemo(() => (isHost && botJoined ? [me.id, BOT.id] : [me.id]), [isHost, botJoined, me.id]);
-  const catchmind = useCatchMind({ meId: me.id, players, nicknameOf, post });
-  const { game, view } = catchmind;
-  const playing = game?.phase === 'playing';
+  // 게임은 서버가 진행한다. 이 화면은 받은 상태를 그리고, 방장 동작·그림·정답(채팅)을 서버로 보낸다
+  const game = session.game;
+  const view = game?.view ?? null;
+  const playing = view?.phase === 'playing';
+  const roundLive = playing && !view.revealing;
+  const amPlayer = view?.players.includes(me.id) ?? false;
 
-  // 방장을 넘겼거나 연습 상대가 나가면 이 화면의 게임은 닫는다
-  const canPlay = isHost && botJoined;
-  const { quit } = catchmind;
-  useEffect(() => {
-    if (!canPlay && game) quit();
-  }, [canPlay, game, quit]);
+  /** 방장 동작·그림은 서버가 확인한다. 거절되면 이유를 나에게만 보여준다 */
+  const act = (task: Promise<unknown>) => task.catch((err: unknown) => tell(errorMessage(err)));
 
-  /** "/" 명령어: 음악 명령은 서버가 권한을 확인하고, 결과 안내는 나에게만 */
+  /** "/" 명령어: 서버가 권한을 확인하고, 결과 안내는 나에게만 */
   function runCommand(text: string) {
     const command = parseCommand(text);
     if (command.kind === 'invalid') return tell(command.message);
     if (command.kind === 'endgame') {
       if (!isHost) return tell('방장만 쓸 수 있는 명령어예요');
       if (!game) return tell('진행 중인 게임이 없어요');
-      catchmind.quit(true);
+      void act(quitGame());
       return;
     }
     musicCommand({ name: command.name, args: command.args }).then(
@@ -116,20 +119,9 @@ export function Room({ session, me, created, onLeave }: Props) {
       runCommand(trimmed);
       return;
     }
-
-    if (playing) {
-      const result = catchmind.guess(me.id, trimmed);
-      if (result === 'correct') return;
-      if (result === 'blocked') {
-        tell('정답이 드러나는 말은 채팅에 쓸 수 없어요');
-        return;
-      }
-    }
-    sendChat(trimmed).catch((err: unknown) => tell(errorMessage(err)));
+    // 게임 중이면 서버가 정답인지 본다 (정답은 채팅에 올라가지 않는다)
+    void act(sendChat(trimmed));
   }
-
-  /** 방장 동작은 서버가 확인한다. 거절되면 이유를 나에게만 보여준다 */
-  const hostAction = (task: Promise<unknown>) => task.catch((err: unknown) => tell(errorMessage(err)));
 
   async function invite() {
     const link = `${window.location.origin}/room/${room.code}`;
@@ -146,21 +138,21 @@ export function Room({ session, me, created, onLeave }: Props) {
     setDialog(null);
   }
 
-  function pickGame() {
+  function pickGame(type: GameType) {
     setDialog(null);
-    catchmind.select();
+    void act(selectGame(type));
   }
 
   const closeMenu = () => setMenuOpen(false);
   const actions = (
     <>
-      {canPlay && !game && (
+      {isHost && !game && (
         <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), setDialog('game'))}>
           게임
         </button>
       )}
       {isHost && !botJoined && (
-        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), hostAction(callBot()))}>
+        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), act(callBot()))}>
           연습 상대 부르기
         </button>
       )}
@@ -213,7 +205,21 @@ export function Room({ session, me, created, onLeave }: Props) {
     </header>
   );
 
-  const gamePanel = game ? <CatchMindPanel controller={catchmind} isHost={isHost} nicknameOf={nicknameOf} /> : null;
+  const gameActions = { onStart: () => void act(startGame()), onQuit: () => void act(quitGame()) };
+  const gamePanel = !game ? null : game.view.type === 'catchmind' ? (
+    <CatchMindPanel
+      game={game}
+      meId={me.id}
+      isHost={isHost}
+      nicknameOf={nicknameOf}
+      {...gameActions}
+      onStroke={(stroke) => void act(sendStroke(stroke))}
+      onUndo={() => void act(undoStroke())}
+      onClear={() => void act(clearStrokes())}
+    />
+  ) : (
+    <ChosungPanel game={game} isHost={isHost} nicknameOf={nicknameOf} {...gameActions} />
+  );
 
   const music = session.music;
   const paused = music.now?.state === 'paused';
@@ -270,9 +276,9 @@ export function Room({ session, me, created, onLeave }: Props) {
   );
 
   let chatPlaceholder: string | undefined;
-  if (playing && view && !view.isRevealing) {
-    if (view.isDrawer) chatPlaceholder = '그리는 중이에요. 제시어는 채팅에 쓸 수 없어요';
-    else if (!view.word) chatPlaceholder = '정답을 입력해보세요';
+  if (roundLive && amPlayer) {
+    if (view.drawerId === me.id) chatPlaceholder = '그리는 중이에요. 제시어는 채팅에 쓸 수 없어요';
+    else if (!game?.private) chatPlaceholder = '정답을 입력해보세요';
   }
   const chat = (
     <ChatPanel
@@ -280,7 +286,7 @@ export function Room({ session, me, created, onLeave }: Props) {
       meId={me.id}
       isHost={isHost}
       placeholder={chatPlaceholder}
-      slowMode={playing}
+      slowMode={roundLive && amPlayer}
       onSend={send}
     />
   );
@@ -290,8 +296,8 @@ export function Room({ session, me, created, onLeave }: Props) {
       members={members}
       meId={me.id}
       isHost={isHost}
-      onTransfer={(m: Member) => hostAction(transferHost(m.id))}
-      onKick={(m: Member) => hostAction(kickMember(m.id))}
+      onTransfer={(m: Member) => act(transferHost(m.id))}
+      onKick={(m: Member) => act(kickMember(m.id))}
     />
   );
 

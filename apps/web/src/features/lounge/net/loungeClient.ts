@@ -4,6 +4,8 @@
  * 연결이 끊겼다 돌아오면 로비는 다시 구독하고, 방은 놓친 채팅부터 다시 받는다.
  */
 import type {
+  GameSnapshot,
+  GameType,
   MusicCommandInput,
   MusicState,
   RoomCreateInput,
@@ -12,6 +14,7 @@ import type {
   RoomUpdateInput,
   RoomView,
   ServerChatMessage,
+  Stroke,
 } from '@lounge/shared';
 import { useSyncExternalStore } from 'react';
 import { errorMessage } from '../../../shared/api/ApiError';
@@ -21,6 +24,8 @@ export type RoomSession = {
   view: RoomView;
   /** 지금 곡·대기큐 (서버가 바뀔 때마다 전체를 보낸다) */
   music: MusicState;
+  /** 열려 있는 게임 (없으면 null) */
+  game: GameSnapshot | null;
   messages: ServerChatMessage[];
   /** 받은 채팅 중 마지막 번호 (다시 연결할 때 이 다음부터 받는다) */
   lastSeq: number;
@@ -54,7 +59,7 @@ export function useLounge(): State {
 }
 
 function startSession(joined: RoomJoined): RoomSession {
-  const session = { view: joined.room, music: joined.music, messages: [], lastSeq: 0 };
+  const session = { view: joined.room, music: joined.music, game: joined.game, messages: [], lastSeq: 0 };
   set({ session, exitReason: null });
   appendMessages(joined.messages);
   return state.session!;
@@ -92,6 +97,24 @@ async function wire() {
   socket.on('music:state', ({ roomId, ...music }) => {
     if (state.session?.view.id === roomId) set({ session: { ...state.session, music } });
   });
+  // 게임: 상태(모두), 나에게만 보이는 제시어, 그림
+  const updateGame = (roomId: string, change: (game: GameSnapshot | null) => GameSnapshot | null) => {
+    if (state.session?.view.id === roomId) set({ session: { ...state.session, game: change(state.session.game) } });
+  };
+  socket.on('game:state', ({ roomId, view }) =>
+    updateGame(roomId, (game) =>
+      view ? { view, private: game?.private ?? null, strokes: game?.strokes ?? [] } : null,
+    ),
+  );
+  socket.on('game:private', ({ roomId, private: secret }) =>
+    updateGame(roomId, (game) => (game ? { ...game, private: secret } : game)),
+  );
+  socket.on('game:stroke', ({ roomId, stroke }) =>
+    updateGame(roomId, (game) => (game ? { ...game, strokes: [...game.strokes, stroke] } : game)),
+  );
+  socket.on('game:strokes', ({ roomId, strokes }) =>
+    updateGame(roomId, (game) => (game ? { ...game, strokes } : game)),
+  );
   socket.on('room:kicked', ({ roomId }) => {
     if (state.session?.view.id === roomId) set({ session: null, exitReason: '방장이 나를 방에서 내보냈어요' });
   });
@@ -109,7 +132,7 @@ async function wire() {
     request('room:join', { code: session.view.code, since: session.lastSeq }).then(
       (joined) => {
         if (state.session?.view.id !== joined.room.id) return;
-        set({ session: { ...state.session, view: joined.room, music: joined.music } });
+        set({ session: { ...state.session, view: joined.room, music: joined.music, game: joined.game } });
         appendMessages(joined.messages);
       },
       (err: unknown) => set({ session: null, exitReason: `방에 다시 들어가지 못했어요. ${errorMessage(err)}` }),
@@ -170,4 +193,20 @@ export const seekMusic = (positionSec: number) => request('music:seek', { positi
 /** 이 브라우저에서 재생할 수 없는 영상이었다 (서버가 지금 곡이 아직 그 곡이면 넘긴다) */
 export function reportUnplayable(entryId: string) {
   void connect().then((s) => s.emit('music:failed', { entryId }));
+}
+
+/* 게임 */
+
+export const selectGame = (type: GameType) => request('game:select', { type });
+export const startGame = () => request('game:start');
+export const quitGame = () => request('game:quit');
+export const undoStroke = () => request('game:undo');
+export const clearStrokes = () => request('game:clear');
+
+/** 내가 그린 한 획: 내 화면에는 바로 붙이고 서버로 보낸다 (서버가 다른 사람에게 전한다) */
+export function sendStroke(stroke: Stroke) {
+  const session = state.session;
+  if (session?.game)
+    set({ session: { ...session, game: { ...session.game, strokes: [...session.game.strokes, stroke] } } });
+  return request('game:stroke', stroke);
 }

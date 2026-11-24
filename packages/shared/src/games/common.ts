@@ -27,4 +27,9 @@ export function rankPlayers(game: GameCommon): RankEntry[] {
 
 export const GAME_CATALOG = [
   { type: 'catchmind', name: '캐치마인드', description: '한 사람이 그리고, 나머지가 채팅으로 맞혀요' },
+  { type: 'chosung', name: '초성 퀴즈', description: '분류와 초성을 보고 가장 먼저 단어를 맞혀요' },
 ] as const;
+
+export type GameType = (typeof GAME_CATALOG)[number]['type'];
+
+export const gameName = (type: GameType) => GAME_CATALOG.find((g) => g.type === type)!.name;

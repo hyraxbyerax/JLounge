@@ -1,4 +1,4 @@
-import { BOT_DRAWINGS } from './botDrawings';
+import { BOT_DRAWINGS } from './botDrawings.ts';
 
 /** 사람이 그릴 때 쓰는 제시어 */
 export const WORDS = [

@@ -2,6 +2,8 @@
  * 라운지 방·채팅의 공통 규칙과 모양. 화면은 미리 안내하는 데, 서버는 최종 판정에 같은 스키마를 쓴다.
  */
 import { z } from 'zod';
+import type { Stroke } from './games/drawing.ts';
+import type { GamePrivate, GameView } from './games/index.ts';
 import type { MusicState } from './music.ts';
 
 export const ROOM_NAME_MAX = 20;
@@ -122,4 +124,9 @@ export type RoomJoined = {
   /** 들어온 뒤(다시 연결이면 since 다음)의 채팅 */
   messages: ServerChatMessage[];
   music: MusicState;
+  /** 열려 있는 게임 (없으면 null) */
+  game: GameSnapshot | null;
 };
+
+/** 게임 화면을 그리는 데 필요한 것 전부: 모두에게 보이는 상태, 나에게만 보이는 것, 지금 라운드 그림 */
+export type GameSnapshot = { view: GameView; private: GamePrivate; strokes: Stroke[] };

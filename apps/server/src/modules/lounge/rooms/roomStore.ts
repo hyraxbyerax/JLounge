@@ -16,7 +16,14 @@
  *   pwfail:{id}:{key}   String 비밀번호 틀린 횟수 (10분 뒤 사라짐)
  */
 import { randomBytes } from 'node:crypto';
-import type { RoomMember, RoomSummary, RoomView, ServerChatMessage } from '@lounge/shared';
+import {
+  gameName,
+  type GameType,
+  type RoomMember,
+  type RoomSummary,
+  type RoomView,
+  type ServerChatMessage,
+} from '@lounge/shared';
 import type { RedisConnections } from '../../../shared/redis.ts';
 
 type Client = RedisConnections['client'];
@@ -334,11 +341,13 @@ export function createRoomStore(client: Client, random: (n: number) => Buffer = 
       const ids = await client.sMembers(keys.public);
       const rooms = await Promise.all(
         ids.map(async (id): Promise<RoomSummary | null> => {
-          const [hash, members, now] = await Promise.all([
+          const [hash, members, now, game] = await Promise.all([
             readHash(id),
             client.zCard(keys.members(id)),
             client.get(`room:${id}:now`),
+            client.get(`room:${id}:game`),
           ]);
+          const playing = game ? (JSON.parse(game) as { state: { type: GameType; phase: string } }).state : null;
           if (!hash) return null;
           return {
             id,
@@ -348,7 +357,7 @@ export function createRoomStore(client: Client, random: (n: number) => Buffer = 
             locked: hash.locked === '1',
             members,
             maxMembers: Number(hash.maxMembers),
-            game: null,
+            game: playing?.phase === 'playing' ? gameName(playing.type) : null,
             nowPlaying: now ? (JSON.parse(now) as { title: string }).title : null,
           };
         }),

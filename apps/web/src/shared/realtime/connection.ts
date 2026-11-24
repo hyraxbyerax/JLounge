@@ -41,15 +41,31 @@ function setStatus(next: ConnectionStatus) {
   listeners.forEach((l) => l(next));
 }
 
-function syncClock(s: LoungeSocket) {
-  const sentAt = Date.now();
-  s.emit('time:sync', (res) => {
-    if (!('data' in res)) return;
-    const receivedAt = Date.now();
-    const serverTime = Date.parse(res.data.serverTime) + (receivedAt - sentAt) / 2;
-    clockOffsetMs = receivedAt - serverTime;
+/** 시계 차이 한 번 재기: 왕복 시간이 짧을수록 정확하다 */
+function sampleClock(s: LoungeSocket): Promise<{ rtt: number; offset: number } | null> {
+  return new Promise((resolve) => {
+    const sentAt = Date.now();
+    s.timeout(5_000).emit('time:sync', (err, res) => {
+      if (err || !('data' in res)) return resolve(null);
+      const receivedAt = Date.now();
+      const rtt = receivedAt - sentAt;
+      resolve({ rtt, offset: receivedAt - (Date.parse(res.data.serverTime) + rtt / 2) });
+    });
   });
 }
+
+/** 여러 번 재서 왕복이 가장 짧았던 값을 쓴다 (페이지를 불러오는 중처럼 바쁠 때 한 번 잰 값은 틀리기 쉽다) */
+async function syncClock(s: LoungeSocket) {
+  let best: { rtt: number; offset: number } | null = null;
+  for (let i = 0; i < 5; i++) {
+    const sample = await sampleClock(s);
+    if (sample && (!best || sample.rtt < best.rtt)) best = sample;
+    await new Promise((r) => setTimeout(r, 200));
+  }
+  if (best) clockOffsetMs = best.offset;
+}
+
+const CLOCK_RESYNC_MS = 60_000;
 
 async function open(): Promise<LoungeSocket> {
   let session;
@@ -73,9 +89,13 @@ async function open(): Promise<LoungeSocket> {
 
   s.on('connect', () => {
     setStatus('connected');
-    syncClock(s);
+    void syncClock(s);
     connectListeners.forEach((l) => l(s));
   });
+  // 컴퓨터 시계가 조금씩 어긋나므로 가끔 다시 잰다
+  window.setInterval(() => {
+    if (s.connected) void syncClock(s);
+  }, CLOCK_RESYNC_MS);
   s.on('disconnect', (reason) => {
     // 서버가 끊은 경우(io server disconnect)에는 자동 재접속이 안 되므로 직접 다시 연결
     if (reason === 'io server disconnect') s.connect();

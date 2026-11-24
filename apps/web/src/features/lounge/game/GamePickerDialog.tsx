@@ -1,8 +1,8 @@
+import { GAME_CATALOG, type GameType } from '@lounge/shared';
 import { Modal } from '../../../shared/ui/Modal';
-import { GAME_CATALOG } from './types';
 
 type Props = {
-  onPick: (type: (typeof GAME_CATALOG)[number]['type']) => void;
+  onPick: (type: GameType) => void;
   onClose: () => void;
 };
 
@@ -23,7 +23,6 @@ export function GamePickerDialog({ onPick, onClose }: Props) {
             </li>
           ))}
         </ul>
-        <p className="form-hint">다른 게임은 준비 중이에요</p>
         <div className="modal-actions">
           <button type="button" className="btn btn-ghost" onClick={onClose}>
             닫기

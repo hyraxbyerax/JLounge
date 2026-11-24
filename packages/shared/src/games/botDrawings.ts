@@ -1,7 +1,7 @@
 /*
  * 가상 사람이 그릴 그림들. 800×500 좌표, 한 획씩 천천히 재생한다.
  */
-import type { Ink, Point, Stroke } from './drawing';
+import type { Ink, Point, Stroke } from './drawing.ts';
 
 const rad = (deg: number) => (deg * Math.PI) / 180;
 

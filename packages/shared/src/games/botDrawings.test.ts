@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { BOT_DRAWINGS, createPlayback } from './botDrawings';
-import { BOARD_HEIGHT, BOARD_WIDTH } from './drawing';
-import { WORDS } from './words';
+import { BOT_DRAWINGS, createPlayback } from './botDrawings.ts';
+import { BOARD_HEIGHT, BOARD_WIDTH } from './drawing.ts';
+import { WORDS } from './words.ts';
 
 describe('연습 상대 그림', () => {
   it('모든 그림이 그림판 안에 있다', () => {
