@@ -35,6 +35,11 @@ const schema = z.object({
     .default(6 * 60 * 60),
   /** SIGTERM 후 연결을 정리하며 기다리는 최대 시간 */
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  /** 로드밸런서(ALB·nginx) 뒤에서 돌 때 true: X-Forwarded-For 의 주소를 접속 주소로 본다 (게스트 비밀번호 잠금 기준) */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
   /** 캠퍼스 플래너 화면 아래 "응답 서버" 이름 (로드 밸런싱 시연용). 비우면 컴퓨터 이름 */
   INSTANCE_NAME: z
     .string()

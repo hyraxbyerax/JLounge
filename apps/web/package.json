@@ -9,6 +9,7 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@lounge/shared": "*",
     "react": "~19.2.9",
     "react-dom": "~19.2.9",
     "socket.io-client": "~4.8.4"

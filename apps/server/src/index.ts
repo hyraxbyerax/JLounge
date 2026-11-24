@@ -49,7 +49,12 @@ const app = createApp({
 
 const httpServer = createServer(app);
 const io = createSocketServer({ httpServer, auth, redis, corsOrigins: config.CORS_ORIGINS, logger });
-registerLoungeHandlers(io);
+const stopLounge = registerLoungeHandlers(io, {
+  redis: redis.client,
+  counter: redisCounter(redis.client),
+  logger,
+  trustProxy: config.TRUST_PROXY,
+});
 
 httpServer.listen(config.PORT, () => logger.info('서버 시작', { port: config.PORT }));
 
@@ -68,6 +73,7 @@ async function shutdown(signal: string) {
   }, config.SHUTDOWN_TIMEOUT_MS);
   force.unref();
 
+  stopLounge();
   // io.close()는 모든 소켓을 끊고 HTTP 서버도 닫는다 (새 연결 거부)
   await io.close();
   await Promise.allSettled([redis.close(), db.end()]);

@@ -1,6 +1,6 @@
 import type { Server as HttpServer } from 'node:http';
 import { createAdapter } from '@socket.io/redis-adapter';
-import { Server } from 'socket.io';
+import { Server, type Socket } from 'socket.io';
 import type { AuthProvider, AuthUser } from '../auth/AuthProvider.ts';
 import type { Logger } from '../logger.ts';
 import type { RedisConnections } from '../redis.ts';
@@ -8,6 +8,7 @@ import type { ClientToServerEvents, ServerToClientEvents } from './events.ts';
 
 export type SocketData = { user: AuthUser };
 export type IoServer = Server<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
+export type IoSocket = Socket<ClientToServerEvents, ServerToClientEvents, Record<string, never>, SocketData>;
 
 type Options = {
   httpServer: HttpServer;

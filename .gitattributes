@@ -1,0 +1,6 @@
+# 줄바꿈은 LF로 통일한다 (Windows에서 git이 CRLF로 바꿔 꺼내면 Prettier 검사가 실패한다)
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+*.woff2 binary
