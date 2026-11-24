@@ -150,15 +150,21 @@
 
 ---
 
-## 부록 A. Redis 키 (초안)
+## 부록 A. Redis 키 (방·채팅은 1단계에서 확정, `modules/lounge/rooms/roomStore.ts`)
 
 | 키 | 형태 | 내용 | 만료 |
 | --- | --- | --- | --- |
 | `room:{roomId}` | Hash | 이름, 방장, 공개 여부, 비밀번호 해시, 자물쇠, 최대 인원 | 방 삭제 시 |
 | `room:{roomId}:members` | Sorted Set | 참가자 (점수 = 입장 시각) | 방 삭제 시 |
+| `room:{roomId}:profiles` | Hash | 참가자 닉네임·게스트 여부 | 방 삭제 시 |
+| `room:{roomId}:bots` | Set | 연습 상대 | 방 삭제 시 |
 | `room:{roomId}:banned` | Set | 강퇴된 사용자 | 방 삭제 시 |
+| `room:{roomId}:chat` | List | 최근 채팅 100개 (다시 연결 시 놓친 메시지) | 방 삭제 시 |
+| `room:{roomId}:seq` | String | 채팅 번호 | 방 삭제 시 |
+| `room:{roomId}:chatrate:{userId}` | String | 도배 방지 횟수 | 5초 |
 | `roomcode:{code}` | String | 코드 → roomId | 방 삭제 시 |
 | `rooms:public` | Set | 공개방 목록 | - |
+| `rooms:alive` | Sorted Set | `{roomId}\|{userId}` → 마지막 접속 확인 시각 (사라진 사람 정리) | 나갈 때 |
 | `room:{roomId}:now` | Hash | 현재 곡 상태 | 방 삭제 시 |
 | `room:{roomId}:queue` | List | 대기큐 | 방 삭제 시 |
 | `room:{roomId}:game` | Hash | 게임 상태 | 방 삭제 시 |
@@ -173,14 +179,14 @@
 - `friendships`: `requester_id`, `addressee_id` (복합 PK, `users` 참조), `status` (`pending`/`accepted`/`blocked`), `created_at`
 - `game_results` [선택]: `id`, `user_id`, `game_type`, `score`, `rank`, `played_at`
 
-## 부록 C. Socket.IO 이벤트 (초안)
+## 부록 C. Socket.IO 이벤트 (1단계까지 확정, 모양은 `packages/shared/src/events.ts`)
 
 | 분류 | 브라우저 → 서버 | 서버 → 브라우저 |
 | --- | --- | --- |
-| 로비 | `lobby:list` | `lobby:rooms` |
-| 방 | `room:create`, `room:join`, `room:leave` | `room:state`, `room:joined`, `room:error` |
-| 방장 | `room:kick`, `room:transfer`, `room:update`, `room:invite` | `room:kicked`, `room:host-changed` |
-| 채팅 | `chat:send` | `chat:message`, `chat:system` |
+| 로비 | `lobby:watch`, `lobby:unwatch` | `lobby:rooms` |
+| 방 | `room:create`, `room:join`(코드, 비밀번호, 다시 연결 시 `since`), `room:leave` | `room:state` (응답 콜백으로 입장 결과) |
+| 방장 | `room:kick`, `room:transfer`, `room:update`, `room:bot`, `room:invite`(4단계) | `room:kicked` (방장 변경은 `room:state`와 시스템 메시지) |
+| 채팅 | `chat:send` | `chat:message` (사람·시스템 메시지 모두, 방마다 번호 `seq`) |
 | 음악 | `music:request`, `music:cancel`, `music:command` | `music:state`, `music:queue` |
 | 게임 | `game:select`, `game:start`, `game:action` | `game:state`, `game:private`, `game:result` |
 | 친구·상태 | `presence:heartbeat`, `friend:invite` | `presence:update`, `friend:request`, `friend:invited` |

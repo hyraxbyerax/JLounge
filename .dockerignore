@@ -1,0 +1,10 @@
+**/node_modules
+**/dist
+**/*.test.ts
+.git
+.claude
+.env
+.env.*
+docs
+apps/web/src
+apps/web/public
