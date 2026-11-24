@@ -10,7 +10,7 @@ const schema = z.object({
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
   REDIS_URL: z.url(),
   DATABASE_URL: z.url(),
-  /** 로컬 인증(게스트·개발용 로그인) 토큰 서명 키. 32자 이상 */
+  /** 로컬 인증(게스트·이메일 로그인) 토큰 서명 키. 32자 이상 */
   AUTH_SECRET: z.string().min(32, 'AUTH_SECRET은 32자 이상이어야 해요'),
   /** 화면을 다른 주소에서 띄울 때 허용할 출처 (쉼표로 구분). 같은 주소면 비워둔다 */
   CORS_ORIGINS: z
@@ -35,6 +35,11 @@ const schema = z.object({
     .default(6 * 60 * 60),
   /** SIGTERM 후 연결을 정리하며 기다리는 최대 시간 */
   SHUTDOWN_TIMEOUT_MS: z.coerce.number().int().positive().default(10_000),
+  /** 캠퍼스 플래너 화면 아래 "응답 서버" 이름 (로드 밸런싱 시연용). 비우면 컴퓨터 이름 */
+  INSTANCE_NAME: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined),
 });
 
 export type Config = z.infer<typeof schema>;

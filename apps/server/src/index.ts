@@ -5,6 +5,7 @@ import { createSampleSearch } from './modules/lounge/music/sampleSearch.ts';
 import { withSearchCache } from './modules/lounge/music/search.ts';
 import { createYouTubeSearch } from './modules/lounge/music/youtubeSearch.ts';
 import { loungeRouter } from './modules/lounge/routes.ts';
+import { scheduleRouter } from './modules/schedule/index.ts';
 import { createLocalAuth } from './shared/auth/localAuth.ts';
 import { loadConfig } from './shared/config.ts';
 import { createPool } from './shared/db/pool.ts';
@@ -30,7 +31,7 @@ logger.info('곡 검색 준비', { source: musicSearch.source });
 let shuttingDown = false;
 
 const app = createApp({
-  issuer: auth,
+  auth,
   db,
   healthChecks: {
     redis: async () => {
@@ -43,6 +44,7 @@ const app = createApp({
   isShuttingDown: () => shuttingDown,
   logger,
   lounge: loungeRouter({ auth, musicSearch, counter: redisCounter(redis.client) }),
+  schedule: scheduleRouter({ auth, db, instanceName: config.INSTANCE_NAME }),
 });
 
 const httpServer = createServer(app);
