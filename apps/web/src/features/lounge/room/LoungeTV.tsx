@@ -90,8 +90,10 @@ export function LoungeTV({
             const current = latest.current.now;
             if (e.data === PlayerState.ENDED && current) latest.current.onEnded(current.entryId);
           },
-          onError: () => {
+          onError: (e) => {
             const current = latest.current.now;
+            // 원인 찾기용 (2: 잘못된 영상 ID, 5: 브라우저 재생 오류, 100: 없는 영상, 101·150: 퍼가기 금지, 153: 브라우저가 주소 정보(Referer)를 안 보냄)
+            console.warn(`유튜브 재생 오류 ${e.data}`, current?.videoId);
             if (current) latest.current.onError(current.entryId);
           },
         },
