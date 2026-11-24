@@ -1,79 +1,12 @@
 // 실제 Redis(Valkey) + Socket.IO 로 방 입장 조건·방장 권한·채팅을 확인한다.
 // 실행: TEST_REDIS_URL=redis://localhost:6379 npm run test   (없으면 건너뛴다)
-import { createServer, type Server as HttpServer } from 'node:http';
-import type { AddressInfo } from 'node:net';
-import type {
-  AckResult,
-  ClientToServerEvents,
-  RoomJoined,
-  RoomSummary,
-  RoomView,
-  ServerChatMessage,
-  ServerToClientEvents,
-} from '@lounge/shared';
-import { io as connectClient, type Socket } from 'socket.io-client';
+import type { RoomJoined, RoomSummary, RoomView, ServerChatMessage } from '@lounge/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
-import type { AuthUser } from '../../../shared/auth/AuthProvider.ts';
-import { createLocalAuth } from '../../../shared/auth/localAuth.ts';
-import { createLogger } from '../../../shared/logger.ts';
-import { redisCounter } from '../../../shared/rateLimit.ts';
-import { connectRedis, type RedisConnections } from '../../../shared/redis.ts';
-import { createSocketServer, type IoServer } from '../../../shared/realtime/socket.ts';
-import { registerLoungeHandlers } from '../index.ts';
-
-type Client = Socket<ServerToClientEvents, ClientToServerEvents>;
+import { createHarness } from '../testing.ts';
 
 const url = process.env.TEST_REDIS_URL;
-const auth = createLocalAuth('t'.repeat(32));
-const logger = createLogger('error');
-const run = Math.random().toString(36).slice(2, 8);
-
-let redis: RedisConnections;
-let http: HttpServer;
-let io: IoServer;
-let stop: () => void;
-let base: string;
-const clients: Client[] = [];
-
-async function connect(name: string, isGuest = true): Promise<Client & { user: AuthUser }> {
-  const user: AuthUser = { userId: `${isGuest ? 'guest' : 'local'}_${run}_${name}`, nickname: name, isGuest };
-  const socket = connectClient(base, { transports: ['websocket'], auth: { token: await auth.issue(user) } }) as Client;
-  clients.push(socket);
-  await new Promise<void>((resolve, reject) => {
-    socket.once('connect', resolve);
-    socket.once('connect_error', reject);
-  });
-  return Object.assign(socket, { user });
-}
-
-/** 응답 콜백을 기다려 { data } / { error } 를 돌려준다 */
-function call<T>(socket: Client, event: string, ...args: unknown[]): Promise<AckResult<T>> {
-  return new Promise((resolve) => (socket.emit as (...a: unknown[]) => void)(event, ...args, resolve));
-}
-async function ok<T>(socket: Client, event: string, ...args: unknown[]): Promise<T> {
-  const res = await call<T>(socket, event, ...args);
-  if ('error' in res) throw new Error(`${event}: ${res.error.code} ${res.error.message}`);
-  return res.data;
-}
-async function errorCode(socket: Client, event: string, ...args: unknown[]): Promise<string> {
-  const res = await call(socket, event, ...args);
-  return 'error' in res ? res.error.code : 'OK';
-}
-
-function next<E extends keyof ServerToClientEvents>(
-  socket: Client,
-  event: E,
-  match: (...args: Parameters<ServerToClientEvents[E]>) => boolean = () => true,
-) {
-  return new Promise<Parameters<ServerToClientEvents[E]>[0]>((resolve) => {
-    const handler = (...args: Parameters<ServerToClientEvents[E]>) => {
-      if (!match(...args)) return;
-      (socket.off as (e: string, h: unknown) => void)(event, handler);
-      resolve(args[0]);
-    };
-    (socket.on as (e: string, h: unknown) => void)(event, handler);
-  });
-}
+const h = createHarness(url ?? '');
+const { run, connect, call, ok, errorCode, next } = h;
 
 const settings = (over: Record<string, unknown> = {}) => ({
   name: `테스트방 ${run}`,
@@ -85,32 +18,9 @@ const settings = (over: Record<string, unknown> = {}) => ({
 });
 
 describe.skipIf(!url)('방과 채팅 (TEST_REDIS_URL 이 있을 때만)', () => {
-  beforeAll(async () => {
-    redis = await connectRedis(url!, logger);
-    http = createServer();
-    io = createSocketServer({ httpServer: http, auth, redis, corsOrigins: [], logger });
-    stop = registerLoungeHandlers(io, {
-      redis: redis.client,
-      counter: redisCounter(redis.client),
-      logger,
-      trustProxy: false,
-    });
-    await new Promise<void>((r) => http.listen(0, r));
-    base = `http://localhost:${(http.address() as AddressInfo).port}`;
-  });
-
-  afterEach(async () => {
-    // 남은 방이 없도록 모두 나간다
-    await Promise.all(clients.map((c) => (c.connected ? call(c, 'room:leave') : null)));
-    clients.splice(0).forEach((c) => c.disconnect());
-  });
-
-  afterAll(async () => {
-    stop();
-    await io.close();
-    await redis.close();
-  });
-
+  beforeAll(() => h.start());
+  afterEach(() => h.cleanup());
+  afterAll(() => h.stop());
   it('방을 만들면 로비에 나타나고, 다른 사람이 코드로 들어오면 입장 메시지와 참가자가 갱신된다', async () => {
     const host = await connect('방장');
     const watcher = await connect('구경꾼');

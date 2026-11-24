@@ -334,7 +334,11 @@ export function createRoomStore(client: Client, random: (n: number) => Buffer = 
       const ids = await client.sMembers(keys.public);
       const rooms = await Promise.all(
         ids.map(async (id): Promise<RoomSummary | null> => {
-          const [hash, members] = await Promise.all([readHash(id), client.zCard(keys.members(id))]);
+          const [hash, members, now] = await Promise.all([
+            readHash(id),
+            client.zCard(keys.members(id)),
+            client.get(`room:${id}:now`),
+          ]);
           if (!hash) return null;
           return {
             id,
@@ -345,7 +349,7 @@ export function createRoomStore(client: Client, random: (n: number) => Buffer = 
             members,
             maxMembers: Number(hash.maxMembers),
             game: null,
-            nowPlaying: null,
+            nowPlaying: now ? (JSON.parse(now) as { title: string }).title : null,
           };
         }),
       );

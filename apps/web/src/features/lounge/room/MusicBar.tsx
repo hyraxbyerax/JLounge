@@ -1,14 +1,15 @@
 import { useEffect, useState, type CSSProperties } from 'react';
 import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
-import type { QueuedSong } from '../model/room';
+import { positionOf, type MusicEntry, type MusicNow } from '@lounge/shared';
+import { serverNow } from '../../../shared/realtime/connection';
 import { CommandHelp, QueueList } from './QueueList';
 
 export type HostMusicCommand = '/pause' | '/resume' | '/skip';
 
 type Props = {
-  now: QueuedSong | null;
+  now: MusicNow | null;
   paused: boolean;
-  queue: QueuedSong[];
+  queue: MusicEntry[];
   /** 내가 신청한 곡에만 [취소] */
   meId: string;
   isHost: boolean;
@@ -28,6 +29,8 @@ type Props = {
   onHostCommand: (command: HostMusicCommand) => void;
   onRequest: () => void;
   onCancel: (entryId: string) => void;
+  /** 방장이 진행 막대로 위치를 옮김 (서버가 모두에게 같은 위치로 맞춘다) */
+  onSeek: (positionSec: number) => void;
 };
 
 type Popover = 'queue' | 'help' | null;
@@ -37,17 +40,17 @@ function formatTime(sec: number): string {
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** 플레이어에서 재생 위치를 주기적으로 읽는다 */
-function usePosition(player: YouTubePlayer | null, entryId: string | null): number {
+/** 서버 기준 재생 위치(초)를 주기적으로 계산한다. 모두에게 같은 위치가 보인다 (내 플레이어가 막혀 있어도) */
+function usePosition(now: MusicNow | null): number {
   const [position, setPosition] = useState(0);
   useEffect(() => {
-    if (!player || !entryId) return;
-    const read = () => setPosition(player.getCurrentTime() || 0);
+    if (!now) return;
+    const read = () => setPosition(positionOf(now, serverNow()) / 1000);
     read();
     const id = window.setInterval(read, 500);
     return () => window.clearInterval(id);
-  }, [player, entryId]);
-  return entryId ? position : 0;
+  }, [now]);
+  return now ? position : 0;
 }
 
 /**
@@ -71,13 +74,14 @@ export function MusicBar({
   onHostCommand,
   onRequest,
   onCancel,
+  onSeek,
 }: Props) {
   const [popover, setPopover] = useState<Popover>(null);
   const toggle = (next: Exclude<Popover, null>) => setPopover((cur) => (cur === next ? null : next));
   const mini = variant === 'mini';
   const small = mini || compact;
 
-  const playing = usePosition(player, now?.entryId ?? null);
+  const playing = usePosition(now);
   // 방장이 진행 막대를 끄는 동안의 위치. 손을 떼면 그 위치로 옮긴다
   const [dragging, setDragging] = useState<number | null>(null);
   const position = dragging ?? playing;
@@ -85,9 +89,9 @@ export function MusicBar({
   const percent = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
   const timeText = `${formatTime(position)} / ${formatTime(duration)}`;
 
-  // 재생 위치 옮기기 (방장만). 지금은 내 화면의 플레이어만 옮기고, 서버를 붙이면 모두에게 같은 위치로 맞춘다
+  // 재생 위치 옮기기 (방장만). 서버가 모두에게 같은 위치로 맞춘다
   function seekTo(sec: number) {
-    player?.seekTo(sec, true);
+    onSeek(sec);
     setDragging(null);
   }
   const commitDrag = () => {

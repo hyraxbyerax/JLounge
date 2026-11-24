@@ -1,10 +1,11 @@
+import { MUSIC_DRIFT_TOLERANCE_MS, positionOf, type MusicNow } from '@lounge/shared';
 import { useEffect, useRef, useState } from 'react';
+import { serverNow } from '../../../shared/realtime/connection';
 import { loadYouTubeApi, PlayerState, type YouTubePlayer } from '../../../shared/youtube/youtubeApi';
-import type { QueuedSong } from '../model/room';
 
 type Props = {
-  now: QueuedSong | null;
-  paused: boolean;
+  /** 서버가 정한 지금 곡 (재생 위치는 서버 시각 기준으로 계산한다) */
+  now: MusicNow | null;
   /** 게임 중: 영상은 화면 밖으로 빼고 소리만 계속 낸다 (팀 결정, 유튜브 약관과 다름 — docs/lounge-spec.md 7장) */
   hidden?: boolean;
   /** 내 소리만 끄기·음량 (다른 사람에게는 영향 없음) */
@@ -19,25 +20,24 @@ type Props = {
   onPlayer: (player: YouTubePlayer | null) => void;
   /** 브라우저가 소리 있는 자동 재생을 막았는지 (음악 바에 [같이 듣기]를 띄운다) */
   onBlockedChange: (blocked: boolean) => void;
-  /** 곡이 끝났을 때. 지금은 화면이 다음 곡으로 넘기고, 서버를 붙이면 서버가 넘긴다 */
-  onEnded: (entryId: string) => void;
-  /** 재생할 수 없는 영상일 때 */
+  /** 재생할 수 없는 영상일 때 (서버가 지금 곡이 아직 그 곡이면 다음 곡으로 넘긴다) */
   onError: (entryId: string) => void;
 };
 
 /** 자동 재생이 막혔는지 판단할 때까지 기다리는 시간 */
 const AUTOPLAY_CHECK_MS = 1500;
+/** 다른 사람과 위치가 어긋났는지 확인하는 주기 (광고 등으로 밀린 경우) */
+const DRIFT_CHECK_MS = 3000;
 
 /**
- * 라운지 TV: 곡을 신청하면 바로 재생된다.
- * 방 안 모두가 같은 곡을 같이 들으므로, 영상 안에서 각자 멈추거나 넘기지 못하게
- * 유튜브 자체 버튼·키보드를 끄고 영상 클릭을 막는다 (팀 결정 — docs/lounge-spec.md 7장).
+ * 라운지 TV: 방 안 모두가 같은 곡을 같은 위치에서 듣는다.
+ * 위치 = 서버 지금 시각 − 곡 시작 시각 (일시정지 중에는 멈춘 위치). 곡 넘김은 서버가 한다.
+ * 모두가 같은 위치를 들어야 하므로 유튜브 자체 버튼·키보드를 끄고 영상 클릭을 막는다 (팀 결정 — 명세 7장).
  * 영상은 고정된 크기로만 보고(전체 화면 없음), 영상 위에서는 우리 버튼으로 내 음량만 조절한다.
  * 방장은 여기에 일시정지·재생 버튼이 더 있다.
  */
 export function LoungeTV({
   now,
-  paused,
   hidden = false,
   muted,
   volume,
@@ -47,13 +47,13 @@ export function LoungeTV({
   onTogglePause,
   onPlayer,
   onBlockedChange,
-  onEnded,
   onError,
 }: Props) {
   const mountRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YouTubePlayer | null>(null);
   const [ready, setReady] = useState(false);
   const [blocked, setBlocked] = useState(false);
+  const paused = now?.state === 'paused';
 
   const blockedRef = useRef(onBlockedChange);
   useEffect(() => {
@@ -63,9 +63,9 @@ export function LoungeTV({
     blockedRef.current(blocked);
   }, [blocked]);
 
-  const latest = useRef({ now, paused, onPlayer, onEnded, onError });
+  const latest = useRef({ now, onPlayer, onError });
   useEffect(() => {
-    latest.current = { now, paused, onPlayer, onEnded, onError };
+    latest.current = { now, onPlayer, onError };
   });
 
   // 플레이어는 한 번만 만들고, 곡이 바뀌면 영상만 바꿔 끼운다
@@ -87,8 +87,6 @@ export function LoungeTV({
           },
           onStateChange: (e) => {
             if (e.data === PlayerState.PLAYING) setBlocked(false);
-            const current = latest.current.now;
-            if (e.data === PlayerState.ENDED && current) latest.current.onEnded(current.entryId);
           },
           onError: (e) => {
             const current = latest.current.now;
@@ -109,6 +107,13 @@ export function LoungeTV({
     };
   }, []);
 
+  /** 서버 기준으로 지금 있어야 할 위치(초) */
+  const expectedSec = () => {
+    const current = latest.current.now;
+    return current ? positionOf(current, serverNow()) / 1000 : 0;
+  };
+
+  // 곡이 바뀌면 그 곡을 "지금 있어야 할 위치"부터 불러온다 (나중에 들어온 사람도 같은 위치)
   const entryId = now?.entryId ?? null;
   const videoId = now?.videoId ?? null;
   useEffect(() => {
@@ -119,21 +124,38 @@ export function LoungeTV({
       player.stopVideo();
       return;
     }
-    player.loadVideoById(videoId);
-    if (latest.current.paused) player.pauseVideo();
+    player.loadVideoById(videoId, expectedSec());
+    if (latest.current.now?.state === 'paused') player.pauseVideo();
     const check = window.setTimeout(() => {
       const state = player.getPlayerState();
-      if (!latest.current.paused && state !== PlayerState.PLAYING && state !== PlayerState.BUFFERING) setBlocked(true);
+      const isPaused = latest.current.now?.state === 'paused';
+      if (!isPaused && state !== PlayerState.PLAYING && state !== PlayerState.BUFFERING) setBlocked(true);
     }, AUTOPLAY_CHECK_MS);
     return () => window.clearTimeout(check);
   }, [ready, entryId, videoId]);
 
+  // 방장의 일시정지·재개·위치 옮김: 같은 곡 안에서 상태가 바뀌면 서버 위치로 맞춘다
+  const startedAt = now?.startedAt ?? null;
+  const positionMs = now?.positionMs ?? null;
   useEffect(() => {
     const player = playerRef.current;
     if (!ready || !player || !entryId) return;
+    player.seekTo(expectedSec(), true);
     if (paused) player.pauseVideo();
     else player.playVideo();
-  }, [ready, paused, entryId]);
+  }, [ready, entryId, paused, startedAt, positionMs]);
+
+  // 광고·버퍼링 등으로 어긋나면 다시 맞춘다
+  useEffect(() => {
+    if (!ready || !entryId || paused) return;
+    const id = window.setInterval(() => {
+      const player = playerRef.current;
+      if (!player || player.getPlayerState() !== PlayerState.PLAYING) return;
+      const drift = Math.abs(player.getCurrentTime() - expectedSec()) * 1000;
+      if (drift > MUSIC_DRIFT_TOLERANCE_MS) player.seekTo(expectedSec(), true);
+    }, DRIFT_CHECK_MS);
+    return () => window.clearInterval(id);
+  }, [ready, entryId, paused]);
 
   // 곡이 바뀌어도 내 음량·소리 끔 설정을 유지한다
   useEffect(() => {
@@ -145,7 +167,10 @@ export function LoungeTV({
   }, [ready, muted, volume, entryId]);
 
   function playByHand() {
-    playerRef.current?.playVideo();
+    const player = playerRef.current;
+    if (!player) return;
+    player.seekTo(expectedSec(), true);
+    player.playVideo();
     setBlocked(false);
   }
 

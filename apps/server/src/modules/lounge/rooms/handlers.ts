@@ -25,6 +25,7 @@ import { validate } from '../../../shared/http/validate.ts';
 import type { Logger } from '../../../shared/logger.ts';
 import type { Counter } from '../../../shared/rateLimit.ts';
 import type { IoServer, IoSocket } from '../../../shared/realtime/socket.ts';
+import type { MusicStore } from '../music/musicStore.ts';
 import { LOBBY_CHANNEL, roomChannel, socketRoomId } from './channels.ts';
 import { ALIVE_TIMEOUT_MS, DISCONNECT_GRACE_MS } from './presence.ts';
 import type { LeaveResult, Profile, RoomStore } from './roomStore.ts';
@@ -53,6 +54,8 @@ const hostError = (status: string) => fail(`ROOM_${status}`, HOST_ERRORS[status]
 type Deps = {
   io: IoServer;
   store: RoomStore;
+  /** 방이 지워질 때 음악도 지우고, 들어올 때 지금 음악 상태를 준다 */
+  music: MusicStore;
   counter: Counter;
   logger: Logger;
   /** 로드밸런서 뒤에 있으면 X-Forwarded-For 의 첫 주소를 접속 주소로 본다 */
@@ -60,7 +63,7 @@ type Deps = {
   now?: () => number;
 };
 
-export function createRoomHandlers({ io, store, counter, logger, trustProxy, now = Date.now }: Deps) {
+export function createRoomHandlers({ io, store, music, counter, logger, trustProxy, now = Date.now }: Deps) {
   const iso = () => new Date(now()).toISOString();
 
   async function publishLobby() {
@@ -86,6 +89,7 @@ export function createRoomHandlers({ io, store, counter, logger, trustProxy, now
   /** 나가기·강퇴·연결 끊김 뒤 공통: 시스템 메시지와 방·로비 갱신 */
   async function afterLeave(roomId: string, result: LeaveResult, text: (nickname: string) => string) {
     if (result.status === 'DELETED') {
+      await music.clearRoom(roomId);
       await publishLobby();
       return;
     }
@@ -214,7 +218,7 @@ export function createRoomHandlers({ io, store, counter, logger, trustProxy, now
         });
         await enter(socket, id);
         if (settings.isPublic) await publishLobby();
-        return { room: (await store.view(id))!, messages: [] };
+        return { room: (await store.view(id))!, messages: [], music: await music.state(id) };
       }),
     );
 
@@ -244,7 +248,7 @@ export function createRoomHandlers({ io, store, counter, logger, trustProxy, now
         }
         const room = await store.view(roomId);
         if (!room) throw fail('ROOM_NOT_FOUND', JOIN_ERRORS.NOT_FOUND!);
-        return { room, messages };
+        return { room, messages, music: await music.state(roomId) };
       }),
     );
 
@@ -375,7 +379,17 @@ export function createRoomHandlers({ io, store, counter, logger, trustProxy, now
     });
   }
 
-  return { register, expire, stillConnected };
+  return {
+    register,
+    expire,
+    stillConnected,
+    // 음악·게임 처리도 같은 방식(응답 형식, 시스템 메시지, 로비 갱신)을 쓰도록 내준다
+    respond,
+    requireRoom,
+    system,
+    say,
+    publishLobby,
+  };
 }
 
 export type RoomHandlers = ReturnType<typeof createRoomHandlers>;

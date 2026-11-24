@@ -9,8 +9,20 @@ import { CatchMindPanel } from '../game/catchmind/CatchMindPanel';
 import { useCatchMind } from '../game/catchmind/useCatchMind';
 import { GamePickerDialog } from '../game/GamePickerDialog';
 import { toMembers, type Me, type Member, type RoomSettings } from '../model/room';
-import { createRoomState, roomReducer, type PostedMessage } from '../model/roomState';
-import { callBot, kickMember, sendChat, transferHost, updateRoom, type RoomSession } from '../net/loungeClient';
+import { createRoomState, parseCommand, roomReducer, type PostedMessage } from '../model/roomState';
+import {
+  callBot,
+  cancelSong,
+  kickMember,
+  musicCommand,
+  reportUnplayable,
+  requestSong,
+  seekMusic,
+  sendChat,
+  transferHost,
+  updateRoom,
+  type RoomSession,
+} from '../net/loungeClient';
 import { ChatPanel } from './ChatPanel';
 import { MemberList } from './MemberList';
 import { LoungeTV } from './LoungeTV';
@@ -82,17 +94,26 @@ export function Room({ session, me, created, onLeave }: Props) {
     if (!canPlay && game) quit();
   }, [canPlay, game, quit]);
 
-  function send(text: string) {
-    const trimmed = text.trim();
-    const isCommand = trimmed.startsWith('/');
-
-    // 게임 강제 종료 (방장만). 방장이 아니거나 게임이 없으면 아래 명령어 처리에서 안내한다
-    if (trimmed.split(/\s+/)[0] === '/endgame' && isHost && game) {
+  /** "/" 명령어: 음악 명령은 서버가 권한을 확인하고, 결과 안내는 나에게만 */
+  function runCommand(text: string) {
+    const command = parseCommand(text);
+    if (command.kind === 'invalid') return tell(command.message);
+    if (command.kind === 'endgame') {
+      if (!isHost) return tell('방장만 쓸 수 있는 명령어예요');
+      if (!game) return tell('진행 중인 게임이 없어요');
       catchmind.quit(true);
       return;
     }
-    if (isCommand) {
-      dispatch({ type: 'command', text, isHost });
+    musicCommand({ name: command.name, args: command.args }).then(
+      ({ notice }) => notice && tell(notice),
+      (err: unknown) => tell(errorMessage(err)),
+    );
+  }
+
+  function send(text: string) {
+    const trimmed = text.trim();
+    if (trimmed.startsWith('/')) {
+      runCommand(trimmed);
       return;
     }
 
@@ -194,7 +215,13 @@ export function Room({ session, me, created, onLeave }: Props) {
 
   const gamePanel = game ? <CatchMindPanel controller={catchmind} isHost={isHost} nicknameOf={nicknameOf} /> : null;
 
-  const cancel = (entryId: string) => dispatch({ type: 'cancel', entryId });
+  const music = session.music;
+  const paused = music.now?.state === 'paused';
+  const cancel = (entryId: string) =>
+    cancelSong(entryId).then(
+      ({ notice }) => tell(notice),
+      (err: unknown) => tell(errorMessage(err)),
+    );
   const changeVolume = (v: number) => {
     setVolume(v);
     setMuted(v === 0);
@@ -202,9 +229,9 @@ export function Room({ session, me, created, onLeave }: Props) {
   // 영상과 미니 음악 바는 같이 나오지 않는다: 평소엔 TV 아래 리모컨, 게임 중엔 헤더 옆 미니 위젯
   const musicBar = (
     <MusicBar
-      now={state.now}
-      paused={state.paused}
-      queue={state.queue}
+      now={music.now}
+      paused={paused}
+      queue={music.queue}
       meId={me.id}
       isHost={isHost}
       variant={game ? 'mini' : 'remote'}
@@ -213,9 +240,10 @@ export function Room({ session, me, created, onLeave }: Props) {
       blocked={blocked}
       muted={muted}
       onMutedChange={setMuted}
-      onHostCommand={(command: HostMusicCommand) => dispatch({ type: 'command', text: command, isHost })}
+      onHostCommand={(command: HostMusicCommand) => runCommand(command)}
       onRequest={() => setDialog('song')}
       onCancel={cancel}
+      onSeek={(sec) => void seekMusic(sec).catch((err: unknown) => tell(errorMessage(err)))}
     />
   );
 
@@ -224,19 +252,17 @@ export function Room({ session, me, created, onLeave }: Props) {
     <div className={`room-tv${game ? ' is-offscreen' : ''}`}>
       <div className="tv-set">
         <LoungeTV
-          now={state.now}
-          paused={state.paused}
+          now={music.now}
           hidden={game !== null}
           muted={muted}
           volume={volume}
           onMutedChange={setMuted}
           onVolumeChange={changeVolume}
           isHost={isHost}
-          onTogglePause={() => dispatch({ type: 'command', text: state.paused ? '/resume' : '/pause', isHost })}
+          onTogglePause={() => runCommand(paused ? '/resume' : '/pause')}
           onPlayer={setPlayer}
           onBlockedChange={setBlocked}
-          onEnded={(entryId) => dispatch({ type: 'ended', entryId })}
-          onError={(entryId) => dispatch({ type: 'failed', entryId })}
+          onError={reportUnplayable}
         />
         {!game && musicBar}
       </div>
@@ -297,7 +323,7 @@ export function Room({ session, me, created, onLeave }: Props) {
             {tab === 'chat' && chat}
             {tab === 'queue' && (
               <div className="tab-scroll">
-                <QueueList queue={state.queue} meId={me.id} onCancel={cancel} />
+                <QueueList queue={music.queue} meId={me.id} onCancel={cancel} />
                 {isHost && <CommandHelp />}
               </div>
             )}
@@ -333,8 +359,11 @@ export function Room({ session, me, created, onLeave }: Props) {
         <SongSearchDialog
           onClose={() => setDialog(null)}
           onPick={(song) => {
-            dispatch({ type: 'request', song });
             setDialog(null);
+            requestSong(song.videoId).then(
+              ({ position }) => position > 0 && tell(`신청했어요. 대기 ${position}번째예요`),
+              (err: unknown) => tell(errorMessage(err)),
+            );
           }}
         />
       )}

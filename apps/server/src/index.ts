@@ -52,6 +52,7 @@ const io = createSocketServer({ httpServer, auth, redis, corsOrigins: config.COR
 const stopLounge = registerLoungeHandlers(io, {
   redis: redis.client,
   counter: redisCounter(redis.client),
+  musicSearch,
   logger,
   trustProxy: config.TRUST_PROXY,
 });

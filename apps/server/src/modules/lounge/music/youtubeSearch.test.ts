@@ -60,6 +60,10 @@ describe('검색 결과 캐시', () => {
         calls++;
         return [{ videoId: 'a', title: 't', channelTitle: 'c', durationSec: 1, thumbnailUrl: null }];
       },
+      async lookup() {
+        calls++;
+        return null;
+      },
     };
     const map = new Map<string, string>();
     const store: CacheStore = {
@@ -72,5 +76,26 @@ describe('검색 결과 캐시', () => {
     expect(calls).toBe(1);
     expect(again[0]?.videoId).toBe('a');
     expect([...map.keys()]).toEqual(['ytsearch:youtube:hello world']);
+  });
+
+  it('영상 확인도 저장해 두고, 재생할 수 없는 영상(null)도 다시 묻지 않는다', async () => {
+    let calls = 0;
+    const provider: MusicSearchProvider = {
+      source: 'youtube',
+      search: async () => [],
+      async lookup() {
+        calls++;
+        return null;
+      },
+    };
+    const map = new Map<string, string>();
+    const cached = withSearchCache(
+      provider,
+      { get: async (k) => map.get(k) ?? null, setEx: async (k, _t, v) => map.set(k, v) },
+      60,
+    );
+    expect(await cached.lookup('abcdefghijk')).toBeNull();
+    expect(await cached.lookup('abcdefghijk')).toBeNull();
+    expect(calls).toBe(1);
   });
 });

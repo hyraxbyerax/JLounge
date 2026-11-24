@@ -4,6 +4,8 @@
  * 연결이 끊겼다 돌아오면 로비는 다시 구독하고, 방은 놓친 채팅부터 다시 받는다.
  */
 import type {
+  MusicCommandInput,
+  MusicState,
   RoomCreateInput,
   RoomJoined,
   RoomSummary,
@@ -17,6 +19,8 @@ import { connect, onConnect, request, type LoungeSocket } from '../../../shared/
 
 export type RoomSession = {
   view: RoomView;
+  /** 지금 곡·대기큐 (서버가 바뀔 때마다 전체를 보낸다) */
+  music: MusicState;
   messages: ServerChatMessage[];
   /** 받은 채팅 중 마지막 번호 (다시 연결할 때 이 다음부터 받는다) */
   lastSeq: number;
@@ -50,7 +54,7 @@ export function useLounge(): State {
 }
 
 function startSession(joined: RoomJoined): RoomSession {
-  const session = { view: joined.room, messages: [], lastSeq: 0 };
+  const session = { view: joined.room, music: joined.music, messages: [], lastSeq: 0 };
   set({ session, exitReason: null });
   appendMessages(joined.messages);
   return state.session!;
@@ -85,6 +89,9 @@ async function wire() {
   socket.on('chat:message', ({ roomId, ...message }) => {
     if (state.session?.view.id === roomId) appendMessages([message]);
   });
+  socket.on('music:state', ({ roomId, ...music }) => {
+    if (state.session?.view.id === roomId) set({ session: { ...state.session, music } });
+  });
   socket.on('room:kicked', ({ roomId }) => {
     if (state.session?.view.id === roomId) set({ session: null, exitReason: '방장이 나를 방에서 내보냈어요' });
   });
@@ -102,7 +109,7 @@ async function wire() {
     request('room:join', { code: session.view.code, since: session.lastSeq }).then(
       (joined) => {
         if (state.session?.view.id !== joined.room.id) return;
-        set({ session: { ...state.session, view: joined.room } });
+        set({ session: { ...state.session, view: joined.room, music: joined.music } });
         appendMessages(joined.messages);
       },
       (err: unknown) => set({ session: null, exitReason: `방에 다시 들어가지 못했어요. ${errorMessage(err)}` }),
@@ -153,3 +160,14 @@ export const updateRoom = (input: RoomUpdateInput) => request('room:update', inp
 export const kickMember = (userId: string) => request('room:kick', { userId });
 export const transferHost = (userId: string) => request('room:transfer', { userId });
 export const callBot = () => request('room:bot');
+
+/* 음악 */
+
+export const requestSong = (videoId: string) => request('music:request', { videoId });
+export const cancelSong = (entryId: string) => request('music:cancel', { entryId });
+export const musicCommand = (input: MusicCommandInput) => request('music:command', input);
+export const seekMusic = (positionSec: number) => request('music:seek', { positionSec });
+/** 이 브라우저에서 재생할 수 없는 영상이었다 (서버가 지금 곡이 아직 그 곡이면 넘긴다) */
+export function reportUnplayable(entryId: string) {
+  void connect().then((s) => s.emit('music:failed', { entryId }));
+}

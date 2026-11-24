@@ -19,5 +19,8 @@ export function createSampleSearch(): MusicSearchProvider {
       const q = normalizeQuery(query);
       return SAMPLE_SONGS.filter((s) => s.title.toLowerCase().includes(q));
     },
+    async lookup(videoId) {
+      return SAMPLE_SONGS.find((s) => s.videoId === videoId) ?? null;
+    },
   };
 }

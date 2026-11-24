@@ -43,12 +43,6 @@ export type Song = {
   durationSec: number;
 };
 
-export type QueuedSong = Song & {
-  entryId: string;
-  requesterId: string;
-  requesterNickname: string;
-};
-
 export type ChatMessage =
   | { id: string; kind: 'user'; userId: string; nickname: string; text: string; sentAt: string }
   | { id: string; kind: 'system'; text: string; sentAt: string }

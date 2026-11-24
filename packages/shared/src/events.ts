@@ -12,6 +12,7 @@ import type {
   RoomView,
   ServerChatMessage,
 } from './lounge.ts';
+import type { MusicCommandInput, MusicState } from './music.ts';
 
 export type AckResult<T> = { data: T } | { error: { code: string; message: string } };
 export type Ack<T> = (res: AckResult<T>) => void;
@@ -35,6 +36,17 @@ export type ClientToServerEvents = {
   'room:bot': (ack: Ack<null>) => void;
 
   'chat:send': (input: { text: string }, ack: Ack<null>) => void;
+
+  /** 곡 신청. 제목·길이는 서버가 유튜브에서 확인한다. 응답: 바로 재생이면 position 0, 대기면 몇 번째인지 */
+  'music:request': (input: { videoId: string }, ack: Ack<{ position: number }>) => void;
+  /** 본인이 신청한, 대기큐에 있는 곡만 */
+  'music:cancel': (input: { entryId: string }, ack: Ack<{ notice: string }>) => void;
+  /** 방장 명령어 (/skip /pause /resume /stop /remove /move /clear). notice 는 방장에게만 보이는 안내 */
+  'music:command': (input: MusicCommandInput, ack: Ack<{ notice: string | null }>) => void;
+  /** 방장이 진행 막대를 끌어 위치를 옮김 (모두에게 적용) */
+  'music:seek': (input: { positionSec: number }, ack: Ack<null>) => void;
+  /** 브라우저에서 재생할 수 없는 영상이었다 (지금 곡이 아직 그 곡이면 다음 곡으로) */
+  'music:failed': (input: { entryId: string }) => void;
 };
 
 export type ServerToClientEvents = {
@@ -44,4 +56,6 @@ export type ServerToClientEvents = {
   /** 내가 강퇴당했을 때 */
   'room:kicked': (info: { roomId: string }) => void;
   'chat:message': (message: ServerChatMessage & { roomId: string }) => void;
+  /** 재생 상태·대기큐가 바뀌었을 때 (전체를 다시 보낸다) */
+  'music:state': (music: MusicState & { roomId: string }) => void;
 };

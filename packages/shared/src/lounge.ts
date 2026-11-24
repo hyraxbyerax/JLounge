@@ -2,6 +2,7 @@
  * 라운지 방·채팅의 공통 규칙과 모양. 화면은 미리 안내하는 데, 서버는 최종 판정에 같은 스키마를 쓴다.
  */
 import { z } from 'zod';
+import type { MusicState } from './music.ts';
 
 export const ROOM_NAME_MAX = 20;
 export const ROOM_PASSWORD_MAX = 30;
@@ -120,4 +121,5 @@ export type RoomJoined = {
   room: RoomView;
   /** 들어온 뒤(다시 연결이면 since 다음)의 채팅 */
   messages: ServerChatMessage[];
+  music: MusicState;
 };

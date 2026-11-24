@@ -22,6 +22,7 @@ type SearchResponse = {
 type VideosResponse = {
   items?: {
     id: string;
+    snippet?: { title?: string; channelTitle?: string; thumbnails?: Record<string, { url?: string } | undefined> };
     contentDetails?: { duration?: string };
     status?: { embeddable?: boolean };
   }[];
@@ -103,6 +104,22 @@ export function createYouTubeSearch(
         });
       }
       return results;
+    },
+
+    async lookup(videoId) {
+      if (!/^[\w-]{11}$/.test(videoId)) return null;
+      const details = await call<VideosResponse>('videos', { part: 'snippet,contentDetails,status', id: videoId });
+      const video = details.items?.[0];
+      const durationSec = parseIsoDuration(video?.contentDetails?.duration ?? '');
+      if (!video || video.status?.embeddable === false || durationSec === 0) return null;
+      const thumbs = video.snippet?.thumbnails ?? {};
+      return {
+        videoId,
+        title: decodeEntities(video.snippet?.title ?? ''),
+        channelTitle: decodeEntities(video.snippet?.channelTitle ?? ''),
+        durationSec,
+        thumbnailUrl: thumbs.medium?.url ?? thumbs.default?.url ?? null,
+      };
     },
   };
 }

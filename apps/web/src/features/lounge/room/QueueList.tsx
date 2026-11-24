@@ -1,8 +1,8 @@
-import type { QueuedSong } from '../model/room';
+import type { MusicEntry } from '@lounge/shared';
 import { HOST_COMMANDS } from '../model/roomState';
 
 type Props = {
-  queue: QueuedSong[];
+  queue: MusicEntry[];
   meId: string;
   onCancel: (entryId: string) => void;
 };

@@ -16,7 +16,8 @@ export type YouTubePlayer = {
   playVideo(): void;
   pauseVideo(): void;
   stopVideo(): void;
-  loadVideoById(videoId: string): void;
+  /** startSeconds: 이 위치부터 재생 */
+  loadVideoById(videoId: string, startSeconds?: number): void;
   getPlayerState(): number;
   /** 지금 재생 위치(초) */
   getCurrentTime(): number;
