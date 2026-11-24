@@ -9,11 +9,14 @@ type Props = {
   isHost: boolean;
   onTransfer: (member: Member) => void;
   onKick: (member: Member) => void;
+  /** 이 사람에게 [친구 요청]을 보여줄지 (회원끼리만) */
+  canRequestFriend?: (member: Member) => boolean;
+  onRequestFriend?: (member: Member) => void;
 };
 
 type Confirm = { action: 'transfer' | 'kick'; member: Member } | null;
 
-export function MemberList({ members, meId, isHost, onTransfer, onKick }: Props) {
+export function MemberList({ members, meId, isHost, onTransfer, onKick, canRequestFriend, onRequestFriend }: Props) {
   const [confirm, setConfirm] = useState<Confirm>(null);
 
   return (
@@ -36,6 +39,11 @@ export function MemberList({ members, meId, isHost, onTransfer, onKick }: Props)
                 <span className="online-dot" aria-hidden="true" />
                 친구
               </span>
+            )}
+            {m.id !== meId && onRequestFriend && canRequestFriend?.(m) && (
+              <button type="button" className="btn-text" onClick={() => onRequestFriend(m)}>
+                친구 요청
+              </button>
             )}
             {isHost && m.id !== meId && (
               <span className="member-actions">

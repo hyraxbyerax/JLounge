@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
 import { errorMessage } from '../../../shared/api/ApiError';
+import { LoginDialog } from '../../../shared/auth/LoginPage';
+import { friendsApi } from '../friends/friendsApi';
+import { useFriends } from '../friends/useFriends';
 import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
 import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
 import { LockIcon } from '../../../shared/ui/icons';
@@ -45,10 +48,12 @@ type Props = {
   /** 방금 만든 방인지 (만든 사람에게만 안내를 보여준다) */
   created: boolean;
   onLeave: () => void;
+  /** 친구 창 (로그인한 회원만). 없으면 게스트라 [로그인]을 보여준다 */
+  onFriends?: () => void;
 };
 
 type Tab = 'chat' | 'queue' | 'members';
-type Dialog = 'song' | 'settings' | 'game' | null;
+type Dialog = 'song' | 'settings' | 'game' | 'login' | null;
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'chat', label: '채팅' },
@@ -56,12 +61,15 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'members', label: '참가자' },
 ];
 
-export function Room({ session, me, created, onLeave }: Props) {
+export function Room({ session, me, created, onLeave, onFriends }: Props) {
   const room = session.view;
   const [state, dispatch] = useReducer(roomReducer, null, () =>
     createRoomState(me, created ? '방을 만들었어요. 초대 링크로 친구를 불러보세요' : undefined),
   );
-  const members = useMemo(() => toMembers(room), [room]);
+  const { overview: friends, reload: reloadFriends } = useFriends();
+  const friendIds = useMemo(() => new Set(friends?.friends.map((f) => f.userId)), [friends]);
+  const pendingIds = useMemo(() => new Set(friends?.outgoing.map((f) => f.userId)), [friends]);
+  const members = useMemo(() => toMembers(room, friendIds), [room, friendIds]);
   const botJoined = members.some((m) => m.id === BOT.id);
   const isMobile = useMediaQuery('(max-width: 767px)');
   const [notice, showNotice] = useNotice();
@@ -159,6 +167,15 @@ export function Room({ session, me, created, onLeave }: Props) {
       <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), invite())}>
         초대
       </button>
+      {onFriends ? (
+        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), onFriends())}>
+          친구
+        </button>
+      ) : (
+        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), setDialog('login'))}>
+          로그인
+        </button>
+      )}
       {isHost && (
         <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), setDialog('settings'))}>
           설정
@@ -298,6 +315,19 @@ export function Room({ session, me, created, onLeave }: Props) {
       isHost={isHost}
       onTransfer={(m: Member) => act(transferHost(m.id))}
       onKick={(m: Member) => act(kickMember(m.id))}
+      // 회원끼리만 친구 요청 (게스트·연습 상대·이미 친구·이미 요청한 사람 제외)
+      canRequestFriend={(m: Member) =>
+        Boolean(onFriends) && !m.isGuest && !m.isBot && !m.isFriend && !pendingIds.has(m.id)
+      }
+      onRequestFriend={(m: Member) =>
+        friendsApi.request({ userId: m.id }).then(
+          (res) => {
+            tell(res.message);
+            reloadFriends();
+          },
+          (err: unknown) => tell(errorMessage(err)),
+        )
+      }
     />
   );
 
@@ -383,6 +413,7 @@ export function Room({ session, me, created, onLeave }: Props) {
         />
       )}
       {dialog === 'game' && <GamePickerDialog onPick={pickGame} onClose={() => setDialog(null)} />}
+      {dialog === 'login' && <LoginDialog onClose={() => setDialog(null)} />}
       <Toast message={notice} />
     </div>
   );

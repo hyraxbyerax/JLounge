@@ -77,10 +77,23 @@ if redis.call('ZSCORE', KEYS[2], ARGV[1]) then
   return 'ALREADY'
 end
 if redis.call('SISMEMBER', KEYS[4], ARGV[1]) == 1 then return 'BANNED' end
-if redis.call('HGET', KEYS[1], 'locked') == '1' then return 'LOCKED' end
+if ARGV[4] ~= '1' and redis.call('HGET', KEYS[1], 'locked') == '1' then return 'LOCKED' end
 if redis.call('ZCARD', KEYS[2]) >= tonumber(redis.call('HGET', KEYS[1], 'maxMembers')) then return 'FULL' end
 redis.call('ZADD', KEYS[2], ARGV[3], ARGV[1])
 redis.call('HSET', KEYS[3], ARGV[1], ARGV[2])
+return 'OK'`;
+
+// 게스트로 있다가 로그인: 같은 자리(들어온 시각)·방장을 새 사용자에게 넘긴다. 결과: OK / NOT_MEMBER / NOT_FOUND
+// ARGV: 게스트 id, 새 사용자 id, 새 프로필 JSON
+const SWAP = `
+if redis.call('EXISTS', KEYS[1]) == 0 then return 'NOT_FOUND' end
+local score = redis.call('ZSCORE', KEYS[2], ARGV[1])
+if not score then return 'NOT_MEMBER' end
+redis.call('ZREM', KEYS[2], ARGV[1])
+redis.call('HDEL', KEYS[3], ARGV[1])
+if not redis.call('ZSCORE', KEYS[2], ARGV[2]) then redis.call('ZADD', KEYS[2], score, ARGV[2]) end
+redis.call('HSET', KEYS[3], ARGV[2], ARGV[3])
+if redis.call('HGET', KEYS[1], 'hostId') == ARGV[1] then redis.call('HSET', KEYS[1], 'hostId', ARGV[2]) end
 return 'OK'`;
 
 // 나가기·강퇴. 결과: {상태, 나간 사람 프로필, 새 방장}
@@ -238,12 +251,27 @@ export function createRoomStore(client: Client, random: (n: number) => Buffer = 
       return (await client.hGet(keys.room(id), 'passwordHash')) || null;
     },
 
-    async join(id: string, user: Profile, now: number): Promise<JoinStatus> {
+    /** skipLock: 방장이 보낸 친구 초대로 들어올 때 (잠긴 방도 들어온다) */
+    async join(id: string, user: Profile, now: number, skipLock = false): Promise<JoinStatus> {
       return run<JoinStatus>(
         JOIN,
         [keys.room(id), keys.members(id), keys.profiles(id), keys.banned(id)],
-        [user.userId, profileJson(user), now],
+        [user.userId, profileJson(user), now, skipLock ? 1 : 0],
       );
+    },
+
+    async swapMember(id: string, guestId: string, user: Profile) {
+      return run<'OK' | 'NOT_MEMBER' | 'NOT_FOUND'>(
+        SWAP,
+        [keys.room(id), keys.members(id), keys.profiles(id)],
+        [guestId, user.userId, profileJson(user)],
+      );
+    },
+
+    /** 친구 초대장을 꺼낸다 (한 번 쓰면 없어진다) */
+    async takeInvite(id: string, userId: string): Promise<{ inviterId: string; byHost: boolean } | null> {
+      const json = await client.getDel(`room:${id}:invite:${userId}`);
+      return json ? (JSON.parse(json) as { inviterId: string; byHost: boolean }) : null;
     },
 
     /** 나가기(mode 'leave', actorId 는 본인) 또는 방장의 강퇴(mode 'kick') */

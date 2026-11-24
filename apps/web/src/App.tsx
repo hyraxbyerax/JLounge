@@ -3,11 +3,17 @@ import { Lobby } from './features/lounge/lobby/Lobby';
 import { PasswordDialog } from './features/lounge/lobby/PasswordDialog';
 import { WindowZoom } from './features/lounge/lobby/WindowZoom';
 import type { RoomInfo, RoomSettings } from './features/lounge/model/room';
+import { FriendsDialog } from './features/lounge/friends/FriendsDialog';
 import {
   clearExitReason,
+  clearFriendNotice,
+  clearInvitation,
   createRoom,
+  inviteFriend,
   joinRoom,
   leaveRoom,
+  sendHeartbeat,
+  startLounge,
   useLounge,
   watchLobby,
 } from './features/lounge/net/loungeClient';
@@ -15,11 +21,13 @@ import { Room } from './features/lounge/room/Room';
 import { PlannerApp } from './features/schedule/PlannerApp';
 import { ApiError, errorMessage } from './shared/api/ApiError';
 import { LoginPage } from './shared/auth/LoginPage';
+import { useMember } from './shared/auth/useMember';
 import { prefersReducedMotion } from './shared/hooks/useMediaQuery';
 import { ConnectionBanner } from './shared/realtime/ConnectionBanner';
 import { useConnection } from './shared/realtime/useConnection';
 import { useMe } from './shared/realtime/useMe';
 import { HomePage } from './shared/home/HomePage';
+import { PRESENCE_HEARTBEAT_MS } from '@lounge/shared';
 import { Toast, useNotice } from './shared/ui/Toast';
 
 // 화면 전환은 라우터 없이 상태로 한다. 방 안에 있을 때만 주소를 /room/{코드} 로 바꾼다 (초대 링크와 같은 모양)
@@ -39,6 +47,27 @@ export function App() {
   const [zoom, setZoom] = useState<{ from: DOMRect; created: boolean } | null>(null);
   const [passwordAsk, setPasswordAsk] = useState<PasswordAsk | null>(null);
   const [notice, notify] = useNotice();
+  const member = useMember();
+  const [friendsOpen, setFriendsOpen] = useState(false);
+
+  // 앱이 켜지면 친구 초대·요청 알림을 받을 수 있게 연결해 둔다
+  useEffect(() => startLounge(), []);
+
+  // 회원이면 접속 중 신호를 보낸다 (20초마다, 방·게임이 바뀔 때마다)
+  const roomKey = `${lounge.session?.view.id ?? ''}:${lounge.session?.game?.view.phase ?? ''}`;
+  useEffect(() => {
+    if (!member) return;
+    sendHeartbeat();
+    const timer = window.setInterval(sendHeartbeat, PRESENCE_HEARTBEAT_MS);
+    return () => window.clearInterval(timer);
+  }, [member, roomKey]);
+
+  // 친구 요청 알림
+  useEffect(() => {
+    if (!lounge.friendNotice) return;
+    notify(lounge.friendNotice);
+    clearFriendNotice();
+  }, [lounge.friendNotice, notify]);
 
   const toLobby = useCallback(() => setScreen({ name: 'lobby' }), []);
   const toHome = () => setScreen({ name: 'home' });
@@ -98,6 +127,19 @@ export function App() {
     toLobby();
   }, [lounge.exitReason, notify, toLobby]);
 
+  /** 친구 초대를 받아 들어가기 (비밀번호를 묻지 않는다) */
+  async function acceptInvitation() {
+    const invitation = lounge.invitation;
+    clearInvitation();
+    if (!invitation) return;
+    try {
+      const session = await joinRoom(invitation.room.code, undefined, true);
+      afterJoin(session.view.code, false);
+    } catch (err) {
+      notify(errorMessage(err));
+    }
+  }
+
   async function create(settings: RoomSettings) {
     const session = await createRoom({ ...settings, password: settings.password ?? null });
     afterJoin(session.view.code, true);
@@ -125,6 +167,7 @@ export function App() {
           onLounge={toLobby}
           onSchedule={() => setScreen({ name: 'schedule' })}
           onLogin={() => setScreen({ name: 'login' })}
+          onFriends={() => setFriendsOpen(true)}
         />
       )}
       {screen.name === 'login' && <LoginPage onDone={toHome} onBack={toHome} />}
@@ -137,6 +180,7 @@ export function App() {
           onCreate={create}
           onHome={toHome}
           onSchedule={() => setScreen({ name: 'schedule' })}
+          onFriends={member ? () => setFriendsOpen(true) : undefined}
           notify={notify}
         />
       )}
@@ -147,6 +191,7 @@ export function App() {
           me={{ id: me.userId, nickname: me.nickname }}
           created={screen.created}
           onLeave={leave}
+          onFriends={member ? () => setFriendsOpen(true) : undefined}
         />
       )}
       {screen.name === 'schedule' && <PlannerApp onBack={toHome} />}
@@ -161,6 +206,32 @@ export function App() {
             afterJoin(session.view.code, false, passwordAsk.from);
           }}
         />
+      )}
+      {friendsOpen && (
+        <FriendsDialog
+          onClose={() => setFriendsOpen(false)}
+          currentRoomCode={inRoom ? lounge.session!.view.code : null}
+          onInvite={async (friend) => {
+            await inviteFriend(friend.userId);
+          }}
+          onFollow={(friend) => {
+            setFriendsOpen(false);
+            if (friend.presence.room) void enter(friend.presence.room.code, { name: friend.presence.room.name });
+          }}
+        />
+      )}
+      {lounge.invitation && (
+        <div className="invite-banner" role="alert">
+          <span>
+            {lounge.invitation.from.nickname}님이 '{lounge.invitation.room.name}' 방에 초대했어요
+          </span>
+          <button type="button" className="btn btn-primary" onClick={() => void acceptInvitation()}>
+            들어가기
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={clearInvitation}>
+            닫기
+          </button>
+        </div>
       )}
       <Toast message={notice} />
     </>

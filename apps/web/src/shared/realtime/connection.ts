@@ -155,10 +155,20 @@ export async function request<E extends keyof ClientToServerEvents>(
   return res.data;
 }
 
+/** 게스트였다가 로그인했을 때 그 게스트의 토큰 (방에서 같은 자리를 이어받는 데 한 번 쓴다) */
+let formerGuestToken: string | null = null;
+export function takeFormerGuestToken(): string | null {
+  const token = formerGuestToken;
+  formerGuestToken = null;
+  return token;
+}
+
 onSessionChange(async () => {
   if (!socket) return;
   try {
+    const previous = socket.auth as { token?: string };
     const session = await getSession();
+    if (user?.isGuest && !session.user.isGuest && previous.token) formerGuestToken = previous.token;
     user = session.user;
     socket.auth = { token: session.token };
     socket.disconnect().connect();

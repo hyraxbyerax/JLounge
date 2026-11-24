@@ -14,10 +14,22 @@ type Props = {
   onCreate: (settings: RoomSettings) => Promise<void>;
   onHome: () => void;
   onSchedule: () => void;
+  /** 친구 창 (로그인한 회원만) */
+  onFriends?: () => void;
   notify: (message: string) => void;
 };
 
-export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHome, onSchedule, notify }: Props) {
+export function Lobby({
+  rooms,
+  defaultRoomName,
+  onEnter,
+  onCode,
+  onCreate,
+  onHome,
+  onSchedule,
+  onFriends,
+  notify,
+}: Props) {
   const [onlyEnterable, setOnlyEnterable] = useState(false);
   const [code, setCode] = useState('');
   const [creating, setCreating] = useState(false);
@@ -70,6 +82,11 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
           <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
             방 만들기
           </button>
+          {onFriends && (
+            <button type="button" className="btn btn-ghost" onClick={onFriends}>
+              친구
+            </button>
+          )}
           <button type="button" className="btn btn-ghost" onClick={onSchedule}>
             캠퍼스 플래너
           </button>

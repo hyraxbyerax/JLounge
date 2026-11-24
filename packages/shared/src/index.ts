@@ -1,5 +1,6 @@
 export * from './bot.ts';
 export * from './events.ts';
+export * from './friends.ts';
 export * from './lounge.ts';
 export * from './music.ts';
 export * from './games/index.ts';

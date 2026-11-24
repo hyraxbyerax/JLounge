@@ -23,16 +23,20 @@ export type Member = {
   nickname: string;
   isHost: boolean;
   isFriend: boolean;
+  /** 게스트 (친구 요청을 보낼 수 없다) */
+  isGuest?: boolean;
   /** 연습 상대(가상 사람) */
   isBot?: boolean;
 };
 
-export function toMembers(view: RoomView): Member[] {
+/** friendIds: 내 친구 (참가자 목록에 친구 표시) */
+export function toMembers(view: RoomView, friendIds: ReadonlySet<string> = new Set()): Member[] {
   return view.members.map((m: RoomMember) => ({
     id: m.userId,
     nickname: m.nickname,
     isHost: m.userId === view.hostId,
-    isFriend: false,
+    isFriend: friendIds.has(m.userId),
+    isGuest: m.isGuest,
     isBot: m.isBot,
   }));
 }

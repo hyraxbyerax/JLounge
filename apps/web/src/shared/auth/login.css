@@ -32,3 +32,10 @@
 .login-field .form-error {
   font-style: normal;
 }
+
+/* 방 안의 로그인 대화상자: 카드 대신 대화상자가 테두리를 맡는다 */
+.modal .login-card {
+  width: 100%;
+  padding: 0;
+  background: none;
+}

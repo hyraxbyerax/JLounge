@@ -5,19 +5,37 @@
 import { randomBytes } from 'node:crypto';
 import type { Queryable } from '../db/pool.ts';
 
-export type MemberRow = { user_id: string; email: string | null; nickname: string; password_hash: string | null };
+export type PresenceVisibility = 'all' | 'online' | 'hidden';
 
-/** 화면에 내려주는 회원 정보 (세션 사용자 + 이메일) */
-export type MemberDto = { userId: string; nickname: string; isGuest: false; email: string | null };
+export type MemberRow = {
+  user_id: string;
+  email: string | null;
+  nickname: string;
+  password_hash: string | null;
+  friend_code: string;
+  presence_visibility: PresenceVisibility;
+};
+
+/** 화면에 내려주는 회원 정보 (세션 사용자 + 이메일, 친구 코드, 활동 상태 공개 범위) */
+export type MemberDto = {
+  userId: string;
+  nickname: string;
+  isGuest: false;
+  email: string | null;
+  friendCode: string;
+  presenceVisibility: PresenceVisibility;
+};
 
 export const toMemberDto = (row: MemberRow): MemberDto => ({
   userId: row.user_id,
   nickname: row.nickname,
   isGuest: false,
   email: row.email,
+  friendCode: row.friend_code,
+  presenceVisibility: row.presence_visibility,
 });
 
-const COLUMNS = 'user_id, email, nickname, password_hash';
+const COLUMNS = 'user_id, email, nickname, password_hash, friend_code, presence_visibility';
 
 const FRIEND_CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export const newFriendCode = () =>
@@ -30,6 +48,14 @@ export async function findMemberById(db: Queryable, userId: string): Promise<Mem
 
 export async function findMemberByEmail(db: Queryable, email: string): Promise<MemberRow | null> {
   const { rows } = await db.query<MemberRow>(`select ${COLUMNS} from users where lower(email) = lower($1)`, [email]);
+  return rows[0] ?? null;
+}
+
+export async function setPresenceVisibility(db: Queryable, userId: string, visibility: PresenceVisibility) {
+  const { rows } = await db.query<MemberRow>(
+    `update users set presence_visibility = $2, updated_at = now() where user_id = $1 returning ${COLUMNS}`,
+    [userId, visibility],
+  );
   return rows[0] ?? null;
 }
 

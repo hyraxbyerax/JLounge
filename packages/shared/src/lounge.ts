@@ -63,6 +63,10 @@ export const roomJoinInput = z.object({
   password: z.string().max(ROOM_PASSWORD_MAX).optional(),
   /** 다시 연결할 때: 이 번호 다음의 채팅만 받는다 */
   since: z.number().int().min(0).optional(),
+  /** 친구 초대를 받아 들어갈 때 (비밀번호 생략, 잠긴 방은 방장이 보낸 초대만) */
+  invite: z.boolean().optional(),
+  /** 게스트로 이 방에 있다가 로그인했을 때: 그 게스트의 토큰 (같은 자리·방장 그대로 이어받는다) */
+  fromGuest: z.string().max(2000).optional(),
 });
 export type RoomJoinInput = z.infer<typeof roomJoinInput>;
 

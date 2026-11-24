@@ -14,7 +14,7 @@
 
 - 게스트: 서버가 `guest_` + 무작위 문자열로 임시 ID와 닉네임을 발급. 접속 종료 시 소멸.
 - 로그인(회원): 이메일 + 비밀번호(8자 이상) + 닉네임(20자까지)으로 가입. 비밀번호는 scrypt 해시로 저장. 로그인은 새로고침·재방문에도 7일 유지되고, 라운지와 캠퍼스 플래너가 같은 로그인을 쓴다. 로그인 버튼은 메인 화면 오른쪽 위와 캠퍼스 플래너 입구 두 곳. AWS를 연결할 때 Cognito로 바꾼다 (지금 가입한 계정은 옮겨가지 않음).
-- 게스트로 방에 있다가 로그인하면, 로그인한 ID로 **같은 방에 자동 재입장**시킨다. 방장이었다면 방장도 넘긴다.
+- 게스트로 방에 있다가 로그인하면(방 안 [로그인] 버튼), 로그인한 ID로 **같은 방에 자동 재입장**시킨다. 입장 순서·방장 자리를 그대로 이어받고, 채팅에 "○○님이 로그인해서 △△님이 됐어요"가 남는다. 비밀번호·자물쇠는 다시 묻지 않는다 (이미 들어와 있던 사람이므로).
 
 ## 2. 로비와 방 목록
 
@@ -146,11 +146,29 @@
 
 ## 9. 친구와 활동 상태 (로그인 사용자)
 
-- 닉네임·친구 코드로 요청 → 수락 시 친구. 방 안에서 닉네임 눌러 요청 가능. 삭제·차단. 하루 요청 수 제한.
-- 친구를 방에 초대 (비밀번호 생략). 친구가 있는 방으로 따라가기.
-- 요청 알림: 접속 중이면 실시간, 아니면 다음 접속 때.
-- 활동 상태 공개 범위: `all`(온라인 + 방·활동) / `online`(온라인만) / `hidden`(오프라인으로 보임, 따라가기 불가). **서버에서 걸러서** 보낸다.
-- 브라우저가 주기적으로 신호(`presence:heartbeat`)를 보내고, 끊기면 만료되어 자동 오프라인.
+친구 창은 메인 화면 오른쪽 위·로비·방 안의 [친구] 버튼으로 연다 (게스트에게는 안 보임). 캠퍼스 플래너 오른쪽 "친구" 칸에도 같은 친구 목록과 접속 여부가 나온다.
+
+**친구 요청**
+- 닉네임 또는 친구 코드(8자리, 가입 때 발급, 친구 창에서 복사)로 요청. 같은 닉네임이 여러 명이면 "친구 코드로 요청해주세요"로 안내한다.
+- 방 안 참가자 목록에서 회원 옆 [친구 요청] (게스트·연습 상대·이미 친구·이미 요청한 사람에게는 안 보임).
+- 하루 **20번**까지 (2026-11-25 결정, 사용자 확인 필요). 서로 요청하면 바로 친구가 된다.
+- 받은 요청은 수락·거절, 보낸 요청은 취소. 친구는 끊기·차단.
+- 요청 알림: 접속 중이면 실시간 알림(토스트), 아니면 다음 접속 때 친구 창 "받은 요청"에.
+- 나·게스트·없는 회원에게는 보낼 수 없다.
+
+**차단**
+- 차단하면 친구·요청이 사라지고, 서로 요청을 보낼 수 없다. 차단당한 사람은 "친구 요청을 보낼 수 없어요"만 보고 차단 사실은 모른다.
+- 차단 목록에서 [차단 풀기].
+
+**초대·따라가기**
+- 지금 방에 있으면 접속 중인 친구 옆에 [초대]. 받은 사람은 화면 위 배너에서 [들어가기]로 **비밀번호 없이** 입장. 초대는 10분 유효, 한 번 쓰면 사라진다.
+- 자물쇠 걸린 방은 **방장이 보낸 초대만** 통한다. 정원·강퇴 규칙은 그대로.
+- [따라가기]: 친구가 있는 방으로 가는 일반 입장 (비밀번호·자물쇠 규칙 그대로).
+
+**활동 상태**
+- 공개 범위: `all`(온라인 + 방·활동) / `online`(온라인만) / `hidden`(오프라인으로 보임, 따라가기 불가). **서버에서 걸러서** 보낸다. 친구 창에서 바꾼다.
+- 활동: "라운지에서 쉬는 중" 또는 "캐치마인드 중"·"초성 퀴즈 중" (게임 진행 중일 때).
+- 브라우저가 20초마다(방·게임이 바뀔 때도) `presence:heartbeat`를 보내고, 60초 동안 없거나 모든 탭을 닫으면 오프라인. 상태가 바뀌면 친구들에게 `presence:update`로 바로 알린다.
 
 ## 10. [선택] 관전 모드
 
@@ -182,14 +200,16 @@
 | `rooms:game-due` | Sorted Set | 방 id → 다음에 확인할 시각 (모든 서버가 0.5초마다, 꺼낸 서버만 처리) | 게임 끝 |
 | `room:{roomId}:slow:{userId}` | String | 게임 중 채팅 3초 제한 | 3초 |
 | `pwfail:{roomId}:{userKey}` | String | 비밀번호 실패 횟수 | 10분 |
-| `presence:{userId}` | Hash | 온라인, 방, 활동 | 30~60초 |
+| `presence:{userId}` | String(JSON) | 접속 중인 방(id·코드·이름), 활동 (`modules/lounge/friends/activity.ts`) | 60초 (신호마다 연장) |
+| `room:{roomId}:invite:{userId}` | String(JSON) | 친구 초대 (보낸 사람, 방장이 보냈는지). 입장할 때 꺼내 쓰고 지운다 | 10분 |
+| `user:{userId}:friendreq` | String | 오늘 보낸 친구 요청 수 | 하루 |
 | `ytsearch:{query}` | String | 검색 결과 캐시 | 수 시간 |
 
-## 부록 B. PostgreSQL 테이블 (초안)
+## 부록 B. PostgreSQL 테이블 (`apps/server/src/shared/db/migrations/`)
 
 - `users` (공유): `user_id` text PK, `nickname` text, `friend_code` text unique, `presence_visibility` text (`all`/`online`/`hidden`), `email` text (소문자 기준 unique), `password_hash` text, `auth_sub` text unique (Cognito용), `created_at`·`updated_at` timestamptz
 - `schedules`, `timetable_entries` (캠퍼스 플래너): `user_id`로 `users` 참조, 사용자 삭제 시 함께 삭제
-- `friendships`: `requester_id`, `addressee_id` (복합 PK, `users` 참조), `status` (`pending`/`accepted`/`blocked`), `created_at`
+- `friendships`: `requester_id`, `addressee_id` (복합 PK, `users` 참조, 사용자 삭제 시 함께 삭제), `status` (`pending`: 요청 중 / `accepted`: 친구 / `blocked`: requester가 addressee를 차단), `created_at`·`updated_at`. 두 사람 사이에는 한 줄만 (순서 무관 unique 인덱스)
 - `game_results` [선택]: `id`, `user_id`, `game_type`, `score`, `rank`, `played_at`
 
 ## 부록 C. Socket.IO 이벤트 (1단계까지 확정, 모양은 `packages/shared/src/events.ts`)
@@ -198,9 +218,9 @@
 | --- | --- | --- |
 | 로비 | `lobby:watch`, `lobby:unwatch` | `lobby:rooms` |
 | 방 | `room:create`, `room:join`(코드, 비밀번호, 다시 연결 시 `since`), `room:leave` | `room:state` (응답 콜백으로 입장 결과) |
-| 방장 | `room:kick`, `room:transfer`, `room:update`, `room:bot`, `room:invite`(4단계) | `room:kicked` (방장 변경은 `room:state`와 시스템 메시지) |
+| 방장 | `room:kick`, `room:transfer`, `room:update`, `room:bot` (친구 초대는 아래 `friend:invite`) | `room:kicked` (방장 변경은 `room:state`와 시스템 메시지) |
 | 채팅 | `chat:send` | `chat:message` (사람·시스템 메시지 모두, 방마다 번호 `seq`) |
 | 음악 | `music:request`(영상 id만), `music:cancel`, `music:command`(방장 명령어), `music:seek`, `music:failed` | `music:state` (지금 곡 + 대기큐 전체) |
 | 게임 | `game:select`, `game:start`(한 판 더도), `game:quit`(`/endgame`), `game:stroke`, `game:undo`, `game:clear` (정답은 `chat:send`) | `game:state`(모두, 숨김 정보 뺌), `game:private`(받을 사람의 `user:{id}` 채널로만), `game:stroke`, `game:strokes` |
-| 친구·상태 | `presence:heartbeat`, `friend:invite` | `presence:update`, `friend:request`, `friend:invited` |
+| 친구·상태 | `presence:heartbeat`, `friend:invite` (요청·수락·차단은 HTTP `/api/lounge/friends`) | `presence:update`, `friend:request`, `friend:changed`, `friend:invited` (모두 받는 사람의 `user:{id}` 채널로) |
 | 공통 | `time:sync` | `time:sync` |

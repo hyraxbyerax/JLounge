@@ -5,9 +5,9 @@ import { AppError } from '../http/errors.ts';
 import { requiredText, validate } from '../http/validate.ts';
 import type { AuthProvider, TokenIssuer } from './AuthProvider.ts';
 import { createGuest } from './localAuth.ts';
-import { currentUser, requireAuth } from './middleware.ts';
+import { currentUser, requireAuth, requireMember } from './middleware.ts';
 import { hashPassword, verifyPassword } from './password.ts';
-import { createMember, findMemberByEmail, findMemberById, toMemberDto } from './users.ts';
+import { createMember, findMemberByEmail, findMemberById, setPresenceVisibility, toMemberDto } from './users.ts';
 
 export const signupInput = z
   .object({
@@ -89,5 +89,17 @@ export function usersRouter(auth: AuthProvider & TokenIssuer, db: Queryable): Ro
     res.json({ data: toMemberDto(row) });
   });
 
+  // 활동 상태 공개 범위 바꾸기 (회원만): all 온라인 + 방·활동 / online 온라인만 / hidden 오프라인으로 보임
+  router.patch('/me', requireAuth(auth), requireMember, async (req, res) => {
+    const { presenceVisibility } = validate(meUpdateInput, req.body);
+    const row = await setPresenceVisibility(db, currentUser(res).userId, presenceVisibility);
+    if (!row) throw new AppError('UNAUTHORIZED', '사용자를 찾을 수 없어요. 다시 로그인해주세요', 401);
+    res.json({ data: toMemberDto(row) });
+  });
+
   return router;
 }
+
+const meUpdateInput = z.object({
+  presenceVisibility: z.enum(['all', 'online', 'hidden'], { error: '공개 범위를 다시 골라주세요' }),
+});

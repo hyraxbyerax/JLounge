@@ -15,10 +15,17 @@ import type {
   RoomView,
   ServerChatMessage,
   Stroke,
+  UserBrief,
 } from '@lounge/shared';
 import { useSyncExternalStore } from 'react';
 import { errorMessage } from '../../../shared/api/ApiError';
-import { connect, onConnect, request, type LoungeSocket } from '../../../shared/realtime/connection';
+import {
+  connect,
+  onConnect,
+  request,
+  takeFormerGuestToken,
+  type LoungeSocket,
+} from '../../../shared/realtime/connection';
 
 export type RoomSession = {
   view: RoomView;
@@ -36,9 +43,13 @@ type State = {
   session: RoomSession | null;
   /** 방에서 밀려났을 때 이유 (강퇴, 방이 사라짐 등). 화면이 보여준 뒤 지운다 */
   exitReason: string | null;
+  /** 친구가 보낸 방 초대 (화면 위에 알림으로) */
+  invitation: { from: UserBrief; room: { code: string; name: string } } | null;
+  /** 친구 요청 같은 짧은 알림 */
+  friendNotice: string | null;
 };
 
-let state: State = { lobby: null, session: null, exitReason: null };
+let state: State = { lobby: null, session: null, exitReason: null, invitation: null, friendNotice: null };
 let watchingLobby = 0;
 const listeners = new Set<() => void>();
 
@@ -118,6 +129,8 @@ async function wire() {
   socket.on('room:kicked', ({ roomId }) => {
     if (state.session?.view.id === roomId) set({ session: null, exitReason: '방장이 나를 방에서 내보냈어요' });
   });
+  socket.on('friend:invited', (invitation) => set({ invitation }));
+  socket.on('friend:request', ({ from }) => set({ friendNotice: `${from.nickname}님이 친구 요청을 보냈어요` }));
 
   // 다시 연결되면: 로비는 다시 구독, 방은 놓친 채팅부터 다시 받는다
   let first = true;
@@ -129,7 +142,9 @@ async function wire() {
     if (watchingLobby > 0) void refreshLobby();
     const session = state.session;
     if (!session) return;
-    request('room:join', { code: session.view.code, since: session.lastSeq }).then(
+    // 게스트였다가 로그인해서 다시 연결된 거라면 그 자리를 이어받는다
+    const fromGuest = takeFormerGuestToken() ?? undefined;
+    request('room:join', { code: session.view.code, since: session.lastSeq, fromGuest }).then(
       (joined) => {
         if (state.session?.view.id !== joined.room.id) return;
         set({ session: { ...state.session, view: joined.room, music: joined.music, game: joined.game } });
@@ -163,9 +178,10 @@ export async function createRoom(input: RoomCreateInput): Promise<RoomSession> {
   return startSession(await request('room:create', input));
 }
 
-export async function joinRoom(code: string, password?: string): Promise<RoomSession> {
+/** invite: 친구 초대를 받아 들어갈 때 (비밀번호를 묻지 않는다) */
+export async function joinRoom(code: string, password?: string, invite = false): Promise<RoomSession> {
   await wire();
-  return startSession(await request('room:join', { code, password }));
+  return startSession(await request('room:join', { code, password, invite: invite || undefined }));
 }
 
 export async function leaveRoom(): Promise<void> {
@@ -209,4 +225,20 @@ export function sendStroke(stroke: Stroke) {
   if (session?.game)
     set({ session: { ...session, game: { ...session.game, strokes: [...session.game.strokes, stroke] } } });
   return request('game:stroke', stroke);
+}
+
+/* 친구 */
+
+/** 앱이 켜지면 알림(친구 초대·요청)을 받을 수 있게 연결해 둔다 */
+export function startLounge() {
+  void wire().catch(() => undefined);
+}
+
+export const clearInvitation = () => set({ invitation: null });
+export const clearFriendNotice = () => set({ friendNotice: null });
+export const inviteFriend = (userId: string) => request('friend:invite', { userId });
+
+/** 회원만: 접속 중 신호 (있는 방·활동은 서버가 소켓을 보고 정한다) */
+export function sendHeartbeat() {
+  void connect().then((s) => s.emit('presence:heartbeat'));
 }

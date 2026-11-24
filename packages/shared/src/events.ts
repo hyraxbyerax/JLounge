@@ -12,6 +12,7 @@ import type {
   RoomView,
   ServerChatMessage,
 } from './lounge.ts';
+import type { FriendPresence, UserBrief } from './friends.ts';
 import type { GameType } from './games/common.ts';
 import type { Stroke } from './games/drawing.ts';
 import type { GamePrivate, GameView } from './games/index.ts';
@@ -59,6 +60,11 @@ export type ClientToServerEvents = {
   'game:stroke': (stroke: Stroke, ack: Ack<null>) => void;
   'game:undo': (ack: Ack<null>) => void;
   'game:clear': (ack: Ack<null>) => void;
+
+  /** 회원만: 접속 중 신호 (20초마다, 방에 들어가고 나올 때도) */
+  'presence:heartbeat': () => void;
+  /** 회원만: 친구를 지금 내 방에 초대 */
+  'friend:invite': (input: { userId: string }, ack: Ack<null>) => void;
 };
 
 export type ServerToClientEvents = {
@@ -77,4 +83,13 @@ export type ServerToClientEvents = {
   /** 그림: 한 획 더 / 전체 다시 (새 라운드·되돌리기·지우기) */
   'game:stroke': (info: { roomId: string; stroke: Stroke }) => void;
   'game:strokes': (info: { roomId: string; strokes: Stroke[] }) => void;
+
+  /** 친구의 상태가 바뀌었다 (그 친구의 공개 범위로 걸러진 것) */
+  'presence:update': (info: { userId: string; presence: FriendPresence }) => void;
+  /** 누가 나에게 친구 요청을 보냈다 */
+  'friend:request': (info: { from: UserBrief }) => void;
+  /** 친구 목록이 바뀌었다 (수락·삭제 등) — 다시 불러오면 된다 */
+  'friend:changed': () => void;
+  /** 친구가 나를 방에 초대했다 */
+  'friend:invited': (info: { from: UserBrief; room: { code: string; name: string } }) => void;
 };

@@ -1,4 +1,5 @@
 import { createServer } from 'node:http';
+import { Router } from 'express';
 import { createApp } from './app.ts';
 import { registerLoungeHandlers } from './modules/lounge/index.ts';
 import { createSampleSearch } from './modules/lounge/music/sampleSearch.ts';
@@ -30,6 +31,9 @@ logger.info('곡 검색 준비', { source: musicSearch.source });
 
 let shuttingDown = false;
 
+const lounge = Router();
+lounge.use(loungeRouter({ auth, musicSearch, counter: redisCounter(redis.client) }));
+
 const app = createApp({
   auth,
   db,
@@ -43,19 +47,24 @@ const app = createApp({
   },
   isShuttingDown: () => shuttingDown,
   logger,
-  lounge: loungeRouter({ auth, musicSearch, counter: redisCounter(redis.client) }),
+  lounge,
   schedule: scheduleRouter({ auth, db, instanceName: config.INSTANCE_NAME }),
 });
 
 const httpServer = createServer(app);
 const io = createSocketServer({ httpServer, auth, redis, corsOrigins: config.CORS_ORIGINS, logger });
-const stopLounge = registerLoungeHandlers(io, {
+const loungeRealtime = registerLoungeHandlers(io, {
+  auth,
+  db,
   redis: redis.client,
   counter: redisCounter(redis.client),
   musicSearch,
   logger,
   trustProxy: config.TRUST_PROXY,
 });
+// 친구 API는 알림을 소켓으로 보내야 해서 소켓 서버를 만든 뒤에 붙인다
+lounge.use('/friends', loungeRealtime.friendsRouter);
+const stopLounge = loungeRealtime.stop;
 
 httpServer.listen(config.PORT, () => logger.info('서버 시작', { port: config.PORT }));
 

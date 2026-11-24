@@ -19,6 +19,7 @@ import {
   type RoomJoined,
   type ServerChatMessage,
 } from '@lounge/shared';
+import type { AuthProvider } from '../../../shared/auth/AuthProvider.ts';
 import { hashPassword, verifyPassword } from '../../../shared/auth/password.ts';
 import { AppError } from '../../../shared/http/errors.ts';
 import { validate } from '../../../shared/http/validate.ts';
@@ -53,6 +54,8 @@ const hostError = (status: string) => fail(`ROOM_${status}`, HOST_ERRORS[status]
 
 type Deps = {
   io: IoServer;
+  /** 게스트 → 로그인 때 게스트 토큰 확인 */
+  auth: AuthProvider;
   store: RoomStore;
   /** 방이 지워질 때 음악도 지우고, 들어올 때 지금 음악 상태를 준다 */
   music: MusicStore;
@@ -73,7 +76,7 @@ export type RoomExtension = {
   joinExtras?: (roomId: string, userId: string) => Promise<Partial<RoomJoined>>;
 };
 
-export function createRoomHandlers({ io, store, music, counter, logger, trustProxy, now = Date.now }: Deps) {
+export function createRoomHandlers({ io, auth, store, music, counter, logger, trustProxy, now = Date.now }: Deps) {
   const iso = () => new Date(now()).toISOString();
   const extensions: RoomExtension[] = [];
 
@@ -248,16 +251,34 @@ export function createRoomHandlers({ io, store, music, counter, logger, trustPro
 
     socket.on('room:join', (input, ack) =>
       respond(socket, 'room:join', ack, async (): Promise<RoomJoined> => {
-        const { code, password, since } = validate(roomJoinInput, input);
+        const { code, password, since, invite, fromGuest } = validate(roomJoinInput, input);
         const roomId = await store.findIdByCode(code);
         if (!roomId) throw fail('ROOM_NOT_FOUND', JOIN_ERRORS.NOT_FOUND!);
 
-        // 이미 참가자면(새로고침·다시 연결) 비밀번호 없이 그대로 돌아온다
-        const rejoining = await store.isMember(roomId, me().userId);
-        if (!rejoining) await checkPassword(socket, roomId, password);
+        // 게스트로 이 방에 있다가 로그인했으면 같은 자리·방장을 그대로 이어받는다 (명세 1장)
+        let swapped = false;
+        if (fromGuest && !me().isGuest) {
+          const guest = await auth.verify(fromGuest);
+          if (guest?.isGuest && (await store.swapMember(roomId, guest.userId, profileOf(socket))) === 'OK') {
+            swapped = true;
+            await store.forget(roomId, guest.userId);
+            await system(roomId, `${guest.nickname}님이 로그인해서 ${me().nickname}님이 됐어요`);
+            await publishRoom(roomId);
+          }
+        }
+
+        // 이미 참가자면(새로고침·다시 연결) 비밀번호 없이 그대로 돌아온다.
+        // 친구 초대장이 있으면 비밀번호를 묻지 않고, 방장이 보낸 초대장이면 잠긴 방도 들어온다
+        const rejoining = swapped || (await store.isMember(roomId, me().userId));
+        let skipLock = false;
+        if (!rejoining) {
+          const invitation = invite ? await store.takeInvite(roomId, me().userId) : null;
+          if (invitation) skipLock = invitation.byHost;
+          else await checkPassword(socket, roomId, password);
+        }
         if (socketRoomId(socket) !== roomId) await leaveCurrent(socket);
 
-        const status = await store.join(roomId, profileOf(socket), now());
+        const status = await store.join(roomId, profileOf(socket), now(), skipLock);
         if (status !== 'OK' && status !== 'ALREADY') throw fail(`ROOM_${status}`, JOIN_ERRORS[status]!);
         await enter(socket, roomId);
 

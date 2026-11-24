@@ -3,6 +3,9 @@
  * (테스트 파일에서만 쓴다)
  */
 import { createServer, type Server as HttpServer } from 'node:http';
+import express from 'express';
+import type { Pool } from 'pg';
+import { errorHandler } from '../../shared/http/errors.ts';
 import type { AddressInfo } from 'node:net';
 import type { AckResult, ClientToServerEvents, GameRandom, ServerToClientEvents } from '@lounge/shared';
 import { io as connectClient, type Socket } from 'socket.io-client';
@@ -20,7 +23,7 @@ export type TestClient = Socket<ServerToClientEvents, ClientToServerEvents> & { 
 
 export function createHarness(
   redisUrl: string,
-  options: { musicSearch?: MusicSearchProvider; gameRandom?: GameRandom } = {},
+  options: { musicSearch?: MusicSearchProvider; gameRandom?: GameRandom; db?: Pool } = {},
 ) {
   const auth = createLocalAuth('t'.repeat(32));
   const logger = createLogger('error');
@@ -45,9 +48,14 @@ export function createHarness(
 
     async start() {
       redis = await connectRedis(redisUrl, logger);
-      http = createServer();
+      // 친구 API(/api/lounge/friends)도 같은 서버에서 받는다 (DB가 있을 때만 쓸 수 있다)
+      const app = express();
+      app.use(express.json());
+      http = createServer(app);
       io = createSocketServer({ httpServer: http, auth, redis, corsOrigins: [], logger });
-      stop = registerLoungeHandlers(io, {
+      const lounge = registerLoungeHandlers(io, {
+        auth,
+        db: options.db ?? ({} as Pool),
         redis: redis.client,
         counter: redisCounter(redis.client),
         musicSearch: options.musicSearch ?? createSampleSearch(),
@@ -55,8 +63,25 @@ export function createHarness(
         trustProxy: false,
         gameRandom: options.gameRandom,
       });
+      app.use('/api/lounge/friends', lounge.friendsRouter);
+      app.use(errorHandler(logger));
+      stop = lounge.stop;
       await new Promise<void>((r) => http.listen(0, r));
       base = `http://localhost:${(http.address() as AddressInfo).port}`;
+    },
+
+    /** 이 사람의 토큰으로 HTTP 요청 (친구 API) */
+    async http(user: AuthUser, method: string, path: string, body?: unknown) {
+      const res = await fetch(`${base}${path}`, {
+        method,
+        headers: {
+          authorization: `Bearer ${await auth.issue(user)}`,
+          ...(body !== undefined ? { 'content-type': 'application/json' } : {}),
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+      });
+      const json = res.status === 204 ? null : ((await res.json()) as { data?: unknown; error?: { code: string } });
+      return { status: res.status, data: json?.data, code: json?.error?.code };
     },
 
     /** 테스트마다: 남은 방이 없도록 모두 나가고 연결을 끊는다 */
@@ -71,8 +96,13 @@ export function createHarness(
       await redis.close();
     },
 
-    async connect(name: string, isGuest = true): Promise<TestClient> {
-      const user: AuthUser = { userId: `${isGuest ? 'guest' : 'local'}_${run}_${name}`, nickname: name, isGuest };
+    /** userId 를 정해 주면 그 사람으로 (DB에 있는 회원으로 접속할 때) */
+    async connect(name: string, isGuest = true, userId?: string): Promise<TestClient> {
+      const user: AuthUser = {
+        userId: userId ?? `${isGuest ? 'guest' : 'local'}_${run}_${name}`,
+        nickname: name,
+        isGuest,
+      };
       const socket = connectClient(base, {
         transports: ['websocket'],
         auth: { token: await auth.issue(user) },

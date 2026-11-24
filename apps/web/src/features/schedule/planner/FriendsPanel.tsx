@@ -13,7 +13,13 @@ const STATUS_LABEL: Record<PresenceStatus, string> = { online: '접속 중', off
  * 친구·접속 상태는 라운지 파트(ElastiCache)의 몫이라 이 패널은 표시만 한다.
  * 라운지가 준비되면 friends 를 넘겨 주거나, PlannerPage 의 sidebar 슬롯에 라운지 컴포넌트를 통째로 넣으면 된다.
  */
-export function FriendsPanel({ friends }: { friends?: FriendPresence[] }) {
+export function FriendsPanel({
+  friends,
+  emptyText = '친구 접속 현황은 라운지 기능과 연결되면 이곳에 표시됩니다.',
+}: {
+  friends?: FriendPresence[];
+  emptyText?: string;
+}) {
   return (
     <section className="friends" aria-label="친구 접속 현황">
       <h2>친구</h2>
@@ -31,7 +37,7 @@ export function FriendsPanel({ friends }: { friends?: FriendPresence[] }) {
           ))}
         </ul>
       ) : (
-        <p className="muted small">친구 접속 현황은 라운지 기능과 연결되면 이곳에 표시됩니다.</p>
+        <p className="muted small">{emptyText}</p>
       )}
       <ul className="legend small muted">
         {(Object.keys(STATUS_LABEL) as PresenceStatus[]).map((s) => (
