@@ -143,95 +143,125 @@
   cursor: pointer;
 }
 
+/*
+ * 강의실 문 (2026-11-25: 창문 → 대학교 느낌의 강의실 문). 문 위에 호실 명판, 문에는 세로로 긴 유리창.
+ * 방이 열려 있으면 유리창에 불이 켜지고(게임 중이면 분홍·민트), 잠긴 방은 블라인드 + 자물쇠, 빈 호실은 불 꺼진 유리.
+ * (확대 전환·상태 표시 코드가 그대로 쓰도록 이름은 window / window-glass 를 그대로 둔다)
+ */
+.window-grid {
+  --door-wood: color-mix(in srgb, var(--color-gold) 28%, var(--color-surface));
+  --glass-off: color-mix(in srgb, var(--color-line) 18%, var(--color-bg));
+}
+
+/* 호실 명판 */
+.room-plate {
+  flex: none;
+  padding: 1px var(--space-2);
+  border: 2px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: 2px 2px 0 var(--color-line);
+  font-family: var(--font-pixel);
+  font-size: var(--text-12);
+  line-height: 1.4;
+}
+
+.is-dark .room-plate {
+  color: var(--color-text-muted);
+}
+
+/* 문 (문틀 + 나무 문판) */
 .window {
   --lit: 0.9;
   position: relative;
   display: block;
   flex: 1;
-  width: 100%;
+  width: min(78%, 120px);
   min-height: 48px;
+  margin-top: var(--space-1);
   overflow: hidden;
-  border: 6px solid var(--color-line);
-  border-radius: var(--radius-window);
-  background: var(--color-bg);
+  border: 5px solid var(--color-line);
+  border-bottom-width: 0;
+  background: var(--door-wood);
   box-shadow: var(--pixel-shadow-lg);
 }
 
-.window-glass {
+/* 문 아래 발판 */
+.window::before {
+  content: '';
   position: absolute;
-  inset: 0;
-  background: var(--color-light);
-  opacity: var(--lit);
+  right: 0;
+  bottom: 0;
+  left: 0;
+  height: 9%;
+  border-top: 3px solid var(--color-line);
+  background: color-mix(in srgb, var(--color-line) 18%, var(--door-wood));
 }
 
-/* 창살 */
-.window::before,
+/* 손잡이 */
 .window::after {
   content: '';
   position: absolute;
-  z-index: 1;
-  background: var(--color-line);
+  top: 54%;
+  right: 12%;
+  width: 12px;
+  height: 8px;
+  border: 2px solid var(--color-line);
+  background: var(--color-gold);
 }
 
-.window::before {
-  top: 0;
-  bottom: 0;
+/* 문에 난 세로 유리창 */
+.window-glass {
+  position: absolute;
+  top: 9%;
   left: 50%;
-  width: 6px;
+  width: 40%;
+  height: 34%;
+  border: 3px solid var(--color-line);
+  background: var(--glass-off);
   transform: translateX(-50%);
 }
 
-.window::after {
-  top: 45%;
-  left: 0;
-  right: 0;
-  height: 6px;
-}
-
 .lit-1 {
-  --lit: 0.45;
+  --lit: 0.55;
 }
 
 .lit-2 {
-  --lit: 0.7;
+  --lit: 0.75;
 }
 
 .lit-3 {
-  --lit: 0.95;
+  --lit: 1;
 }
 
-/* 켜진 창문: 유리에 픽셀 반짝임 두 칸 */
+/* 열린 방: 유리창에 불 (사람이 많을수록 진하게) + 픽셀 반짝임 */
 .is-open .window-glass,
-.is-game .window-glass,
 .is-full .window-glass {
   background:
-    linear-gradient(var(--color-surface), var(--color-surface)) 14% 12% / 8px 8px no-repeat,
-    linear-gradient(var(--color-surface), var(--color-surface)) calc(14% + 10px) calc(12% + 10px) / 8px 8px no-repeat,
-    var(--color-light);
+    linear-gradient(var(--color-surface), var(--color-surface)) 20% 12% / 6px 6px no-repeat,
+    color-mix(in srgb, var(--color-light) calc(var(--lit) * 100%), var(--glass-off));
 }
 
-/* 게임 중: 민트 불빛과 분홍 불빛이 반반 (계단처럼 딱 나뉘게) */
+/* 게임 중: 분홍·민트 반반 */
 .is-game .window-glass {
   background:
-    linear-gradient(var(--color-surface), var(--color-surface)) 14% 12% / 8px 8px no-repeat,
+    linear-gradient(var(--color-surface), var(--color-surface)) 20% 12% / 6px 6px no-repeat,
     linear-gradient(160deg, var(--color-light) 50%, var(--color-sofa) 50%);
 }
 
 /* 잠긴 방: 블라인드 */
 .is-locked .window-glass {
-  opacity: 1;
-  background: repeating-linear-gradient(to bottom, var(--color-surface-2) 0 6px, var(--color-surface) 6px 12px);
+  background: repeating-linear-gradient(to bottom, var(--color-surface-2) 0 5px, var(--color-surface) 5px 10px);
 }
 
 .window-lock {
   position: absolute;
-  top: 50%;
+  top: 66%;
   left: 50%;
   z-index: 2;
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border: var(--pixel) solid var(--color-line);
   border-radius: var(--radius-control);
   background: var(--color-bg);
@@ -239,16 +269,14 @@
   transform: translate(-50%, -50%);
 }
 
-/* 불 꺼진 창문 */
+/* 빈 호실: 불 꺼진 문 (조금 어둡게) */
 .is-dark {
   cursor: default;
 }
 
-.is-dark .window-glass {
-  opacity: 1;
-  background: var(--color-bg);
+.is-dark .window {
+  background: color-mix(in srgb, var(--color-line) 8%, var(--door-wood));
 }
-
 .window-name {
   max-width: 100%;
   margin-top: var(--space-1);
@@ -260,13 +288,21 @@
   white-space: nowrap;
 }
 
+/* 문 아래 글자 칸은 높이를 고정해서 (곡·게임 줄이 있든 없든) 문 크기가 모두 같게 */
 .window-meta {
   display: flex;
+  flex: none;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
+  gap: 2px;
+  height: 40px;
   max-width: 100%;
+  overflow: hidden;
   font-size: var(--text-14);
+}
+
+.window-name {
+  flex: none;
 }
 
 .window-state,
@@ -328,7 +364,7 @@
     padding: var(--space-8) var(--space-4);
   }
 
-  /* 휴대폰: 한 줄에 2개, 창문은 4:5 비율로 아래로 쌓고 건물 안이 스크롤된다 */
+  /* 휴대폰: 한 줄에 2개, 강의실 문은 3:5 비율로 아래로 쌓고 건물 안이 스크롤된다 */
   .window-grid {
     flex: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -338,6 +374,7 @@
 
   .window {
     flex: none;
-    aspect-ratio: 4 / 5;
+    width: 62%;
+    aspect-ratio: 3 / 5;
   }
 }

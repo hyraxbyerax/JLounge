@@ -23,10 +23,16 @@ type Props = {
 const PER_ROW = 6;
 const MIN_WINDOWS = 12;
 
-/** 방 창문 뒤에 채울 불 꺼진 창문 수 (줄이 딱 맞게) */
-function darkSlots(lit: number): number {
-  const total = Math.max(MIN_WINDOWS, Math.ceil(lit / PER_ROW) * PER_ROW);
-  return total - lit;
+/** 건물 전체 칸 수 (줄이 딱 맞게, 적어도 두 줄) */
+function slotCount(rooms: number): number {
+  return Math.max(MIN_WINDOWS, Math.ceil(rooms / PER_ROW) * PER_ROW);
+}
+
+/** 칸 위치 → 호실 번호. 건물처럼 맨 윗줄이 가장 높은 층 (두 줄이면 위 201~206호, 아래 101~106호) */
+function roomNumber(index: number, total: number): string {
+  const floors = total / PER_ROW;
+  const floor = floors - Math.floor(index / PER_ROW);
+  return `${floor}${String((index % PER_ROW) + 1).padStart(2, '0')}호`;
 }
 
 export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHome, onFriends, notify }: Props) {
@@ -37,6 +43,7 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
   // 로비에는 공개방만 온다 (서버가 비공개방은 보내지 않는다)
   const publicRooms = rooms ?? [];
   const visible = sortRooms(publicRooms).filter((r) => !onlyEnterable || isEnterable(r));
+  const slots = slotCount(visible.length);
 
   // 잠금·정원은 서버가 최종 확인하지만, 창문에 보이는 상태로 바로 안내한다
   function tryEnter(room: RoomInfo, from?: DOMRect) {
@@ -94,12 +101,10 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
         <div className="building-toolbar">
           <p className="building-note">
             {rooms === null
-              ? '불 켜진 방을 찾고 있어요…'
-              : publicRooms.length === 0
-                ? '아직 불 켜진 방이 없어요. [방 만들기]로 첫 방을 열어볼까요?'
-                : visible.length === 0
-                  ? '지금 들어갈 수 있는 방이 없어요. 새 방을 열어볼까요?'
-                  : null}
+              ? '방을 찾고 있어요…'
+              : publicRooms.length > 0 && visible.length === 0
+                ? '지금 들어갈 수 있는 방이 없어요'
+                : null}
           </p>
           {publicRooms.length > 0 && (
             <label className="filter-toggle">
@@ -108,16 +113,16 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
             </label>
           )}
         </div>
-        {/* 한 줄에 6개씩, 적어도 두 줄(12칸)을 건물 위아래 꽉 차게. 방이 없는 칸은 불 꺼진 창문 */}
+        {/* 한 줄(한 층)에 강의실 6개, 적어도 두 층. 방이 없는 호실은 불 꺼진 문 */}
         <ul className="window-grid">
-          {visible.map((room) => (
+          {visible.map((room, i) => (
             <li key={room.id}>
-              <WindowCard room={room} onOpen={(from) => tryEnter(room, from)} />
+              <WindowCard room={room} label={roomNumber(i, slots)} onOpen={(from) => tryEnter(room, from)} />
             </li>
           ))}
-          {Array.from({ length: darkSlots(visible.length) }, (_, i) => (
+          {Array.from({ length: slots - visible.length }, (_, i) => (
             <li key={`dark-${i}`}>
-              <DarkWindow />
+              <DarkWindow label={roomNumber(visible.length + i, slots)} />
             </li>
           ))}
         </ul>
