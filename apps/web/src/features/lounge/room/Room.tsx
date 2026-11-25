@@ -131,6 +131,15 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
     void act(sendChat(trimmed));
   }
 
+  async function copyCode() {
+    try {
+      await navigator.clipboard.writeText(room.code);
+      showNotice('방 코드를 복사했어요');
+    } catch {
+      showNotice(`방 코드: ${room.code}`);
+    }
+  }
+
   async function invite() {
     const link = `${window.location.origin}/room/${room.code}`;
     try {
@@ -198,6 +207,16 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
     <header className="room-header">
       <h1 className="room-name sign">{room.name}</h1>
       <p className="room-info">
+        <button
+          type="button"
+          className="room-code"
+          title="눌러서 방 코드 복사"
+          aria-label={`방 코드 ${room.code}, 눌러서 복사`}
+          onClick={() => void copyCode()}
+        >
+          코드 <strong>{room.code}</strong>
+        </button>
+        {' · '}
         {!isMobile && host && <>👑 {host.nickname} · </>}
         {members.length}/{room.maxMembers}
         {badges.length > 0 && <> · {badges.join(' · ')}</>}

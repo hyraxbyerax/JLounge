@@ -12,6 +12,7 @@ import {
   type WordTopic,
 } from '@lounge/shared';
 import { useState } from 'react';
+import { Modal } from '../../../../shared/ui/Modal';
 import { GameLobby, Scoreboard } from '../GameLobby';
 import { useRemainingSec } from '../useRemaining';
 import { DrawingBoard } from './DrawingBoard';
@@ -46,6 +47,7 @@ export function CatchMindPanel({
   const { view } = game;
   const remainingSec = useRemainingSec(view.endsAt);
   const topic = view.topic ?? 'all';
+  const [confirmQuit, setConfirmQuit] = useState(false);
 
   if (view.phase !== 'playing') {
     return (
@@ -121,7 +123,32 @@ export function CatchMindPanel({
         {!view.revealing && (
           <span className={`game-timer${remainingSec <= 10 ? ' is-urgent' : ''}`}>남은 시간 {remainingSec}초</span>
         )}
+        {isHost && (
+          <button type="button" className="btn-text game-quit" onClick={() => setConfirmQuit(true)}>
+            게임 끝내기
+          </button>
+        )}
       </header>
+      {confirmQuit && (
+        <Modal title="게임 끝내기" onClose={() => setConfirmQuit(false)}>
+          <p>진행 중인 게임을 끝낼까요? 이번 판 점수는 남지 않아요</p>
+          <div className="modal-actions">
+            <button type="button" className="btn btn-ghost" onClick={() => setConfirmQuit(false)}>
+              계속하기
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setConfirmQuit(false);
+                onQuit();
+              }}
+            >
+              끝내기
+            </button>
+          </div>
+        </Modal>
+      )}
       <p className="game-word" aria-live="polite">
         {view.revealing ? (
           <>

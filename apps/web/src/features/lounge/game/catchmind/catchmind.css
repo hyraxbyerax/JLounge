@@ -350,3 +350,9 @@
   outline: 2px solid var(--color-light-ink);
   outline-offset: 2px;
 }
+
+/* 방장: 진행 중 게임 끝내기 */
+.game-quit {
+  font-size: var(--text-14);
+  white-space: nowrap;
+}
