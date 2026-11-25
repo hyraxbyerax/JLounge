@@ -47,7 +47,6 @@ export function HomePage({ onLounge, onSchedule, onLogin, onFriends }: Props) {
         <button type="button" className="home-choice" onClick={onLounge}>
           <DoorIcon />
           <span className="home-choice-label">방 만들기·들어가기</span>
-          <span className="home-choice-hint">로그인 없이 바로 들어가요</span>
         </button>
         <button type="button" className={`home-choice${member ? '' : ' is-locked'}`} onClick={onSchedule}>
           <span className="home-icon-wrap">
@@ -55,7 +54,6 @@ export function HomePage({ onLounge, onSchedule, onLogin, onFriends }: Props) {
             {!member && <LockIcon className="home-lock" />}
           </span>
           <span className="home-choice-label">캠퍼스 플래너</span>
-          <span className="home-choice-hint">{member ? '내 일정과 시간표' : '로그인이 필요해요'}</span>
         </button>
       </div>
     </div>
