@@ -44,13 +44,35 @@ input {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-light);
+  outline: var(--pixel) solid var(--color-light-ink);
   outline-offset: 2px;
 }
 
+/* 간판(큰 제목): 픽셀 글꼴 */
 .sign {
   font-family: var(--font-sign);
-  font-weight: 700;
+  font-weight: 400;
+  letter-spacing: 0.02em;
+}
+
+/* 픽셀 글꼴을 쓰는 짧은 글 (버튼·제목·탭·게임) */
+h1,
+h2,
+h3,
+.btn,
+.btn-text,
+.modal-title,
+.form-label,
+.toast-body,
+.pixel {
+  font-family: var(--font-pixel);
+}
+
+/* 픽셀 상자: 진한 테두리 + 흐림 없는 그림자 */
+.pixel-box {
+  border: var(--pixel) solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--pixel-shadow);
 }
 
 .muted {
@@ -69,16 +91,16 @@ input {
   border: 0;
 }
 
-/* 로비·메인 배경: 창가로 들어오는 은은한 햇살 */
+/* 로비·메인 배경: 크림 바탕에 작은 픽셀 점무늬 */
 .soft-light {
   min-height: 100%;
   background:
-    radial-gradient(60% 50% at 15% 0%, color-mix(in srgb, var(--color-light) 14%, transparent), transparent 70%),
-    radial-gradient(50% 40% at 90% 10%, color-mix(in srgb, var(--color-sofa) 16%, transparent), transparent 70%),
+    radial-gradient(color-mix(in srgb, var(--color-light) 45%, transparent) 1.5px, transparent 2px) 0 0 / 24px 24px,
+    radial-gradient(color-mix(in srgb, var(--color-sofa) 60%, transparent) 1.5px, transparent 2px) 12px 12px / 24px 24px,
     var(--color-bg);
 }
 
-/* 버튼 */
+/* 버튼: 픽셀 테두리 + 그림자, 누르면 그림자 쪽으로 쑥 들어간다 */
 .btn {
   display: inline-flex;
   align-items: center;
@@ -86,18 +108,23 @@ input {
   gap: var(--space-2);
   min-height: 44px;
   padding: 0 var(--space-4);
-  border: 0;
+  border: var(--pixel) solid var(--color-line);
   border-radius: var(--radius-control);
-  background: var(--color-surface-2);
+  background: var(--color-surface);
+  box-shadow: var(--pixel-shadow);
   color: var(--color-text);
   font-size: var(--text-14);
-  font-weight: 600;
   white-space: nowrap;
   cursor: pointer;
 }
 
-.btn:active {
-  transform: translateY(1px);
+.btn:hover:not(:disabled) {
+  background: var(--color-surface-2);
+}
+
+.btn:active:not(:disabled) {
+  box-shadow: none;
+  transform: translate(3px, 3px);
 }
 
 .btn:disabled {
@@ -105,14 +132,14 @@ input {
   cursor: not-allowed;
 }
 
-.btn-primary {
+.btn-primary,
+.btn-primary:hover:not(:disabled) {
   background: var(--color-light);
   color: var(--color-light-text);
 }
 
 .btn-ghost {
-  background: transparent;
-  box-shadow: inset 0 0 0 1px var(--color-surface-2);
+  background: var(--color-surface);
 }
 
 .btn-text {
@@ -132,21 +159,31 @@ input {
   place-items: center;
   width: 44px;
   height: 44px;
-  border: 0;
-  border-radius: var(--radius-round);
-  background: var(--color-surface-2);
+  border: var(--pixel) solid var(--color-line);
+  border-radius: var(--radius-control);
+  background: var(--color-surface);
+  box-shadow: var(--pixel-shadow);
   font-weight: 600;
   cursor: pointer;
+}
+
+.icon-btn:active {
+  box-shadow: none;
+  transform: translate(3px, 3px);
 }
 
 .input {
   min-height: 44px;
   padding: 0 var(--space-3);
-  border: 1px solid transparent;
+  border: var(--pixel) solid var(--color-line);
   border-radius: var(--radius-control);
-  background: var(--color-surface-2);
+  background: var(--color-surface);
   color: var(--color-text);
   font-size: var(--text-16);
+}
+
+.input:focus {
+  background: var(--color-surface-2);
 }
 
 .input::placeholder {
@@ -166,21 +203,23 @@ input {
 .toast-body {
   display: block;
   padding: var(--space-3) var(--space-4);
+  border: var(--pixel) solid var(--color-line);
   border-radius: var(--radius-control);
-  background: var(--color-surface-2);
+  background: var(--color-sofa);
+  box-shadow: var(--pixel-shadow);
   font-size: var(--text-14);
-  font-weight: 600;
   white-space: nowrap;
-  animation: rise-in 200ms ease-out;
+  animation: rise-in 200ms steps(4);
 }
 
 /* 대화상자 */
 .modal {
   width: min(400px, calc(100% - var(--space-8)));
   padding: var(--space-6);
-  border: 0;
+  border: var(--pixel) solid var(--color-line);
   border-radius: var(--radius-panel);
   background: var(--color-surface);
+  box-shadow: var(--pixel-shadow-lg);
   color: var(--color-text);
 }
 
@@ -195,7 +234,7 @@ input {
 .modal-title {
   margin-bottom: var(--space-4);
   font-size: var(--text-20);
-  font-weight: 800;
+  font-weight: 400;
 }
 
 .modal-form {
@@ -286,6 +325,7 @@ input {
   align-items: center;
   gap: var(--space-3);
   padding: var(--space-3);
+  border: var(--pixel) solid var(--color-line);
   border-radius: var(--radius-control);
   background: var(--color-surface-2);
 }
@@ -312,9 +352,10 @@ input {
 
 .connection-banner {
   padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-danger);
+  border: var(--pixel) solid var(--color-danger);
   border-radius: var(--radius-control);
   background: var(--color-surface);
+  box-shadow: var(--pixel-shadow);
   font-size: var(--text-14);
   white-space: nowrap;
   animation: rise-in 200ms ease-out;

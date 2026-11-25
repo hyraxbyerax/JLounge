@@ -41,6 +41,8 @@
   justify-content: center;
   margin-top: var(--space-8);
   padding: var(--space-12) var(--space-8) 0;
+  border: var(--pixel) solid var(--color-line);
+  border-bottom: 0;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: var(--color-surface);
 }
@@ -64,16 +66,24 @@
   width: 100%;
   aspect-ratio: 3 / 4;
   margin-bottom: var(--space-3);
-  border: 6px solid var(--color-surface-2);
+  border: 6px solid var(--color-line);
   border-radius: var(--radius-window);
   background: var(--color-light);
-  box-shadow: 0 0 40px color-mix(in srgb, var(--color-light) 35%, transparent);
+  box-shadow: var(--pixel-shadow-lg);
+}
+
+.is-schedule.is-open .entrance-door {
+  background: var(--color-cool-fill);
+}
+
+.entrance:active .entrance-door {
+  box-shadow: none;
+  transform: translate(5px, 5px);
 }
 
 /* 로그인 전에는 불 꺼진 문 + 자물쇠, 로그인하면 불이 켜진다 */
 .is-schedule:not(.is-open) .entrance-door {
   background: var(--color-surface-2);
-  box-shadow: none;
   color: var(--color-text-muted);
 }
 
@@ -83,7 +93,7 @@
 }
 
 .entrance-label {
-  font-weight: 600;
+  font-family: var(--font-pixel);
 }
 
 .entrance-hint {

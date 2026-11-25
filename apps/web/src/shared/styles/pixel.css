@@ -1,0 +1,173 @@
+/*
+ * 픽셀 디자인 마감 (2026-11-25, docs/design.md "픽셀").
+ * 화면 곳곳의 상자에 진한 픽셀 테두리와 흐림 없는 그림자를 한곳에서 입힌다.
+ * main.tsx 에서 화면 CSS들보다 나중에 불러오므로, 같은 선택자면 이 파일이 이긴다.
+ */
+
+/* ---------- 큰 상자: 테두리 + 그림자 ---------- */
+.tv-set,
+.game,
+.music-popover,
+.emoji-pop,
+.suggest,
+.room-menu,
+.invite-banner,
+.login-card,
+.campus-planner .modal,
+.campus-planner .friends {
+  border: var(--pixel) solid var(--color-line);
+  box-shadow: var(--pixel-shadow);
+}
+
+.music-bar.is-mini {
+  border: var(--pixel) solid var(--color-line);
+  border-radius: 0;
+  box-shadow: var(--pixel-shadow);
+}
+
+/* 대화상자 안의 로그인 카드는 대화상자가 테두리를 맡는다 */
+.modal .login-card {
+  border: 0;
+  box-shadow: none;
+}
+
+/* 라운지 건물(로비) */
+.building {
+  border: var(--pixel) solid var(--color-line);
+  border-bottom: 0;
+}
+
+/* 방 오른쪽(참가자·채팅), 모바일 탭 */
+.room-side {
+  border-left: var(--pixel) solid var(--color-line);
+}
+
+.room-tabs {
+  border-top: var(--pixel) solid var(--color-line);
+}
+
+.room-tab {
+  font-family: var(--font-pixel);
+}
+
+.room-tab[aria-selected='true'] {
+  background: var(--color-light);
+}
+
+.members-toggle {
+  font-family: var(--font-pixel);
+}
+
+/* ---------- 작은 칸: 얇은 픽셀 테두리 ---------- */
+.bubble,
+.game-rules,
+.ranking-item,
+.score-chip,
+.player-chip,
+.friend-code,
+.word-secret,
+.search-item {
+  border: 2px solid var(--color-line);
+}
+
+/* 달력 칸은 많아서 연한 선으로 (진한 선이면 칸이 너무 무거워 보인다) */
+.campus-planner .cal-cell {
+  border: 2px solid color-mix(in srgb, var(--color-line) 25%, var(--color-surface));
+}
+
+/* 픽셀 크기 그대로 보이도록 픽셀 글꼴 기본 크기(12px)의 배수로 */
+.home-title {
+  font-size: 36px;
+}
+
+.lobby-title,
+.room-name {
+  font-size: 24px;
+}
+
+/* 메인 입구 문: 픽셀 손잡이 */
+.entrance-door {
+  position: relative;
+}
+
+.entrance-door::after {
+  content: '';
+  position: absolute;
+  top: 55%;
+  right: 14%;
+  width: 12px;
+  height: 12px;
+  background: var(--color-line);
+  box-shadow: inset -3px -3px 0 color-mix(in srgb, var(--color-surface) 40%, var(--color-line));
+}
+
+@media (max-width: 767px) {
+  .home-title {
+    font-size: 24px;
+  }
+}
+
+.bubble {
+  box-shadow: 2px 2px 0 var(--color-line);
+}
+
+.msg-private {
+  border: 2px dashed var(--color-text-muted);
+}
+
+.board {
+  border: var(--pixel) solid var(--color-line);
+}
+
+.topic-chip {
+  border: 2px solid var(--color-line);
+  border-radius: 0;
+  font-family: var(--font-pixel);
+}
+
+.room-code {
+  border: 2px solid var(--color-line);
+  border-radius: 0;
+  background: var(--color-surface);
+  font-family: var(--font-pixel);
+}
+
+/* ---------- 게임 글자: 픽셀 ---------- */
+.game-title,
+.game-round,
+.game-timer,
+.game-word,
+.score-chip,
+.ranking,
+.game-lobby-title,
+.rule-row dt,
+.player-chip,
+.music-title,
+.lobby-title,
+.home-title {
+  font-family: var(--font-pixel);
+}
+
+/* 진행 막대: 칸이 딱 떨어지게 */
+.progress-track {
+  border: 2px solid var(--color-line);
+  border-radius: 0;
+}
+
+/* ---------- 캠퍼스 플래너: 버튼도 라운지 버튼처럼 ---------- */
+.campus-planner .btn {
+  border: 2px solid var(--color-line);
+  box-shadow: 2px 2px 0 var(--color-line);
+  font-family: var(--font-pixel);
+}
+
+.campus-planner .btn:active {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+.campus-planner h1,
+.campus-planner h2 {
+  font-family: var(--font-pixel);
+  font-weight: 400;
+}

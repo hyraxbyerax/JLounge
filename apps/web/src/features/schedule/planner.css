@@ -1,5 +1,5 @@
 /*
- * 캠퍼스 플래너 화면. 팀원 styles.css 를 옮긴 것으로, 배치·크기는 그대로 두고 색만 라운지 디자인 토큰(오트밀)으로 바꿨다.
+ * 캠퍼스 플래너 화면. 팀원 styles.css 를 옮긴 것으로, 배치·크기는 그대로 두고 색·모서리만 라운지 디자인 토큰(파스텔 픽셀)으로 바꿨다. 픽셀 테두리는 shared/styles/pixel.css.
  * 라운지 화면과 섞이지 않게 모든 규칙을 .campus-planner 안에만 적용한다.
  */
 .campus-planner {
@@ -17,7 +17,7 @@
   --soon: var(--color-warn);
   --overdue: var(--color-danger);
   --done: var(--color-online);
-  --radius: 12px;
+  --radius: 0;
 
   min-height: 100%;
   background: var(--bg);
@@ -68,7 +68,7 @@
     white-space: normal;
     border: 1px solid var(--line);
     background: var(--surface);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 8px 14px;
     font-weight: 500;
     transition:
@@ -111,7 +111,7 @@
     font-size: 18px;
     width: 32px;
     height: 32px;
-    border-radius: 8px;
+    border-radius: 0;
     color: var(--muted);
   }
   .icon-btn:hover {
@@ -152,7 +152,7 @@
   .field textarea,
   .filters select {
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 0;
     padding: 9px 11px;
     background: var(--surface);
     width: 100%;
@@ -169,7 +169,7 @@
   .form-error {
     color: var(--overdue);
     background: color-mix(in srgb, var(--overdue) 8%, var(--surface));
-    border-radius: 8px;
+    border-radius: 0;
     padding: 8px 12px;
     font-size: 13.5px;
     margin: 8px 0;
@@ -178,7 +178,7 @@
   .seg {
     display: inline-flex;
     border: 1px solid var(--line);
-    border-radius: 8px;
+    border-radius: 0;
     overflow: hidden;
     margin: 0 0 12px;
     padding: 0;
@@ -233,13 +233,13 @@
     gap: 4px;
     background: var(--line);
     padding: 3px;
-    border-radius: 10px;
+    border-radius: 0;
   }
   .tabs button {
     border: 0;
     background: none;
     padding: 6px 18px;
-    border-radius: 8px;
+    border-radius: 0;
     font-weight: 500;
     color: var(--muted);
   }
@@ -344,7 +344,7 @@
     position: relative;
     border: 1px solid transparent;
     background: color-mix(in srgb, var(--line) 45%, var(--surface));
-    border-radius: 10px;
+    border-radius: 0;
     min-height: 58px;
     padding: 6px 4px 4px;
     display: flex;
@@ -509,7 +509,7 @@
     font-size: 11.5px;
     font-weight: 700;
     padding: 0 7px;
-    border-radius: 6px;
+    border-radius: 0;
     color: var(--surface);
     background: var(--soon);
   }
@@ -609,7 +609,7 @@
     max-width: 440px;
     max-height: 92vh;
     overflow: auto;
-    border-radius: 16px;
+    border-radius: 0;
     padding: 18px 20px 20px;
   }
   .modal-head {
@@ -675,7 +675,7 @@
     right: 3px;
     border: 0;
     border-left: 4px solid;
-    border-radius: 8px;
+    border-radius: 0;
     padding: 4px 7px;
     text-align: left;
     overflow: hidden;

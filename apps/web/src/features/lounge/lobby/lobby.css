@@ -120,9 +120,10 @@
   width: 100%;
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  border: 6px solid var(--color-surface-2);
+  border: 6px solid var(--color-line);
   border-radius: var(--radius-window);
   background: var(--color-bg);
+  box-shadow: var(--pixel-shadow-lg);
 }
 
 .window-glass {
@@ -138,7 +139,7 @@
   content: '';
   position: absolute;
   z-index: 1;
-  background: var(--color-surface-2);
+  background: var(--color-line);
 }
 
 .window::before {
@@ -168,15 +169,21 @@
   --lit: 0.95;
 }
 
-/* 켜진 창문만 불빛 번짐 */
-.is-open .window,
-.is-game .window,
-.is-full .window {
-  box-shadow: 0 0 32px color-mix(in srgb, var(--color-light) calc(var(--lit) * 40%), transparent);
+/* 켜진 창문: 유리에 픽셀 반짝임 두 칸 */
+.is-open .window-glass,
+.is-game .window-glass,
+.is-full .window-glass {
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) 14% 12% / 8px 8px no-repeat,
+    linear-gradient(var(--color-surface), var(--color-surface)) calc(14% + 10px) calc(12% + 10px) / 8px 8px no-repeat,
+    var(--color-light);
 }
 
+/* 게임 중: 민트 불빛과 분홍 불빛이 반반 (계단처럼 딱 나뉘게) */
 .is-game .window-glass {
-  background: linear-gradient(160deg, var(--color-light) 25%, var(--color-sofa) 100%);
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) 14% 12% / 8px 8px no-repeat,
+    linear-gradient(160deg, var(--color-light) 50%, var(--color-sofa) 50%);
 }
 
 /* 잠긴 방: 블라인드 */
@@ -194,7 +201,8 @@
   place-items: center;
   width: 44px;
   height: 44px;
-  border-radius: var(--radius-round);
+  border: var(--pixel) solid var(--color-line);
+  border-radius: var(--radius-control);
   background: var(--color-bg);
   color: var(--color-danger);
   transform: translate(-50%, -50%);
@@ -212,6 +220,7 @@
 
 .window-name {
   margin-top: var(--space-2);
+  font-family: var(--font-pixel);
   font-size: var(--text-20);
   line-height: 1.3;
 }

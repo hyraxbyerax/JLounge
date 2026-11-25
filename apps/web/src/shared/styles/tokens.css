@@ -3,29 +3,40 @@
  * 색·글꼴 값은 이 파일에만 쓰고, 화면은 변수만 쓴다.
  */
 
-/* 라운지 기본: 오트밀 & 모카 (낮도 밤도 아닌 중간 톤) */
+/* 라운지 기본: 파스텔 픽셀 (2026-11-25) — 크림 바탕, 진한 보라 글자, 딸기 분홍 강조, 민트·하늘 보조 */
 :root {
-  --color-bg: #e9e2d6;
-  --color-surface: #f4efe6;
-  --color-surface-2: #dcd3c4;
-  --color-text: #3b3028;
-  --color-text-muted: #675a4d;
-  --color-light: #b87444;
-  --color-light-text: #1c120a;
+  --color-bg: #fff4e6;
+  --color-surface: #fffdf8;
+  --color-surface-2: #f7e3ec;
+  --color-text: #3d2c4e;
+  --color-text-muted: #6b5a7b;
+  /* 강조(버튼·재생·창문 불빛) */
+  --color-light: #ff9fbf;
+  --color-light-text: #3d2c4e;
   /* 강조색을 글자로 쓸 때 (바탕 위에서 읽히도록 더 진하게) */
-  --color-light-ink: #8a4b25;
-  --color-sofa: #7e9476;
+  --color-light-ink: #b4326a;
+  /* 보조 강조(방장·게임): 민트 */
+  --color-sofa: #9ee0c9;
   /* 보조 강조색을 글자로 쓸 때 */
-  --color-sofa-ink: #55634c;
-  --color-online: #33694a;
-  --color-danger: #9a3a33;
+  --color-sofa-ink: #2f7a63;
+  --color-online: #2f7a4e;
+  --color-danger: #b0322a;
   /* 곧 마감 (캠퍼스 플래너) */
-  --color-warn: #7d5a12;
-  /* 차분한 파랑 (달력 토요일 등) */
-  --color-cool: #3f5f7f;
+  --color-warn: #8a5a00;
+  /* 하늘색 (달력 토요일 등 글자) */
+  --color-cool: #2f6690;
+  --color-cool-fill: #a9d8f5;
 
+  /* 픽셀 테두리·그림자: 선은 글자색, 그림자는 흐림 없이 딱 떨어지게 */
+  --color-line: #3d2c4e;
+  --pixel: 3px;
+  --pixel-shadow: 3px 3px 0 var(--color-line);
+  --pixel-shadow-lg: 5px 5px 0 var(--color-line);
+
+  /* 글꼴: 긴 글(채팅·설명·플래너 일정)은 읽기 쉬운 SUIT, 간판·버튼·게임은 픽셀(갈무리) */
   --font-ui: 'SUIT Variable', 'SUIT', system-ui, sans-serif;
-  --font-sign: 'Gowun Batang', serif;
+  --font-pixel: 'Galmuri11', 'SUIT Variable', system-ui, sans-serif;
+  --font-sign: 'Galmuri14', 'Galmuri11', system-ui, sans-serif;
 
   /* 글자 크기 단계: 12 / 14 / 16(본문) / 20 / 28 / 40px */
   --text-12: 0.75rem;
@@ -44,11 +55,11 @@
   --space-8: 32px;
   --space-12: 48px;
 
-  /* 모서리: 창문 6 / 패널 12 / 버튼·입력창 10 / 원형 */
-  --radius-window: 6px;
-  --radius-panel: 12px;
-  --radius-control: 10px;
-  --radius-round: 999px;
+  /* 모서리: 픽셀이라 전부 각지게 (접속 점·색 고르기 같은 작은 점도 네모 픽셀) */
+  --radius-window: 0;
+  --radius-panel: 0;
+  --radius-control: 0;
+  --radius-round: 0;
 
   --duration-enter: 400ms;
 
@@ -61,22 +72,4 @@
   --ink-blue: #3b6fd8;
   --ink-brown: #8a5a3b;
   --ink-purple: #8c5a9e;
-}
-
-/* 낮 모드 (스케줄 관리) */
-[data-theme='day'] {
-  --color-bg: #eef1f8;
-  --color-surface: #ffffff;
-  --color-surface-2: #e2e7f3;
-  --color-text: #1e2140;
-  --color-text-muted: #5b5f80;
-  --color-light: #e9a43b;
-  --color-light-text: #2a2110;
-  --color-light-ink: #8a5a14;
-  --color-sofa: #7a4a8c;
-  --color-sofa-ink: #6a3d7a;
-  --color-online: #2e9c7e;
-  --color-danger: #d14b63;
-  --color-warn: #7d5a12;
-  --color-cool: #3f5f7f;
 }
