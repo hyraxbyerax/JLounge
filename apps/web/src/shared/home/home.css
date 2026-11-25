@@ -1,7 +1,7 @@
 /* 화면에 딱 맞게 고정 (스크롤 없음). 간판 + 큰 버튼 두 개를 화면 한가운데에 */
 .home {
   /* 아이콘 높이: 화면 높이에 맞춰 (간판·글자 자리를 빼고), 120~240px */
-  --icon-h: clamp(120px, calc(100dvh - 400px), 240px);
+  --icon-h: clamp(110px, calc(100dvh - 470px), 220px);
   /* 문판·손잡이·달력 칸 색 (아이콘 안에서만) */
   --door-panel: color-mix(in srgb, var(--color-light) 70%, var(--color-surface));
   --door-shine: var(--color-surface);
@@ -36,28 +36,77 @@
   font-weight: 600;
 }
 
-/* 간판: 픽셀 글꼴 기본 크기(12px)의 6배 */
+/*
+ * 간판: 굵은 픽셀 글꼴(갈무리11 Bold)을 기본 크기(12px)의 6배로.
+ * 크림색 픽셀 테두리를 둘러 점무늬 배경 위에서도 또렷하게, 그 뒤에 분홍 그림자.
+ */
 .home-title {
+  position: relative;
+  margin-bottom: var(--space-6);
+  color: var(--color-text);
+  font-family: var(--font-pixel);
   font-size: 72px;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.02em;
-  text-shadow: 4px 4px 0 var(--color-light);
+  letter-spacing: 0.04em;
+  text-shadow:
+    3px 0 0 var(--color-surface),
+    -3px 0 0 var(--color-surface),
+    0 3px 0 var(--color-surface),
+    0 -3px 0 var(--color-surface),
+    3px 3px 0 var(--color-surface),
+    -3px -3px 0 var(--color-surface),
+    3px -3px 0 var(--color-surface),
+    -3px 3px 0 var(--color-surface),
+    7px 7px 0 var(--color-light);
+}
+
+/* 간판 양옆 작은 픽셀 반짝이 (십자 모양) */
+.home-title::before,
+.home-title::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  background: var(--color-light);
+  box-shadow:
+    6px 0 0 var(--color-light),
+    -6px 0 0 var(--color-light),
+    0 6px 0 var(--color-light),
+    0 -6px 0 var(--color-light);
+}
+
+.home-title::before {
+  left: -44px;
+  transform: translateY(-80%);
+}
+
+.home-title::after {
+  right: -40px;
+  background: var(--color-sofa);
+  box-shadow:
+    6px 0 0 var(--color-sofa),
+    -6px 0 0 var(--color-sofa),
+    0 6px 0 var(--color-sofa),
+    0 -6px 0 var(--color-sofa);
+  transform: translateY(10%);
 }
 
 /* 큰 버튼 두 개를 가로로, 크기를 똑같이 */
 .home-choices {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: var(--space-8);
-  width: min(100%, 600px);
+  gap: var(--space-12);
+  width: min(100%, 640px);
 }
 
 .home-choice {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-6) var(--space-4) var(--space-4);
+  gap: var(--space-3);
+  padding: var(--space-8) var(--space-6) var(--space-6);
   border: var(--pixel) solid var(--color-line);
   background: var(--color-surface);
   box-shadow: var(--pixel-shadow-lg);
@@ -74,31 +123,15 @@
   transform: translate(5px, 5px);
 }
 
-.home-icon-wrap {
-  position: relative;
-  display: inline-grid;
-  place-items: center;
-}
-
 .home-icon {
   display: block;
   height: var(--icon-h);
-  margin-bottom: var(--space-2);
-}
-
-/* 로그인 전 플래너: 달력이 흐리고 자물쇠 */
-.home-choice.is-locked .home-icon {
-  opacity: 0.45;
-}
-
-.home-lock {
-  position: absolute;
-  width: 36px;
-  height: 36px;
-  color: var(--color-text);
 }
 
 .home-choice-label {
+  padding-top: var(--space-3);
+  border-top: 2px dashed var(--color-surface-2);
+  align-self: stretch;
   font-family: var(--font-pixel);
   font-size: var(--text-16);
 }
@@ -112,11 +145,21 @@
   }
 
   .home-title {
+    margin-bottom: var(--space-4);
     font-size: 48px;
+  }
+
+  .home-title::before,
+  .home-title::after {
+    display: none;
   }
 
   .home-choices {
     gap: var(--space-4);
+  }
+
+  .home-choice {
+    padding: var(--space-6) var(--space-3) var(--space-4);
   }
 
   .home-choice-label {

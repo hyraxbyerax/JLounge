@@ -130,7 +130,7 @@ export function LoginPage({ lead, onDone, onBack }: PageProps) {
         onDone={onDone}
         footer={
           <button type="button" className="btn btn-ghost" onClick={onBack}>
-            라운지로 돌아가기
+            돌아가기
           </button>
         }
       />

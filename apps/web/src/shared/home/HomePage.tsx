@@ -1,6 +1,5 @@
 import { signOut } from '../api/session';
 import { useMember } from '../auth/useMember';
-import { LockIcon } from '../ui/icons';
 import { CalendarIcon, DoorIcon } from './HomeIcons';
 import './home.css';
 
@@ -38,7 +37,7 @@ export function HomePage({ onLounge, onSchedule, onLogin, onFriends }: Props) {
         )}
       </div>
 
-      <h1 className="home-title sign">
+      <h1 className="home-title">
         JLounge
         <span className="sr-only"> 전북대학교 휴식 라운지</span>
       </h1>
@@ -48,11 +47,8 @@ export function HomePage({ onLounge, onSchedule, onLogin, onFriends }: Props) {
           <DoorIcon />
           <span className="home-choice-label">방 만들기·들어가기</span>
         </button>
-        <button type="button" className={`home-choice${member ? '' : ' is-locked'}`} onClick={onSchedule}>
-          <span className="home-icon-wrap">
-            <CalendarIcon />
-            {!member && <LockIcon className="home-lock" />}
-          </span>
+        <button type="button" className="home-choice" onClick={onSchedule}>
+          <CalendarIcon />
           <span className="home-choice-label">캠퍼스 플래너</span>
         </button>
       </div>
