@@ -1,3 +1,4 @@
+/* 화면에 딱 맞게 고정 (스크롤 없음). 입구 문 크기를 화면 높이에 맞춘다 */
 .home {
   position: relative;
   display: flex;
@@ -5,7 +6,10 @@
   align-items: center;
   justify-content: flex-end;
   gap: var(--space-3);
+  height: 100%;
+  min-height: 0;
   padding: var(--space-12) var(--space-4) 0;
+  overflow: hidden;
   text-align: center;
 }
 
@@ -34,13 +38,15 @@
 }
 
 .home-building {
+  /* 문 너비: 화면 높이에서 제목·글자 자리를 빼고 남은 만큼 (문 비율 3:4), 100~220px */
+  --door: clamp(100px, calc((100dvh - 360px) * 0.75), 220px);
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 220px));
+  grid-template-columns: repeat(2, var(--door));
   gap: var(--space-8);
   width: min(100%, 600px);
   justify-content: center;
-  margin-top: var(--space-8);
-  padding: var(--space-12) var(--space-8) 0;
+  margin-top: var(--space-6);
+  padding: var(--space-8) var(--space-8) 0;
   border: var(--pixel) solid var(--color-line);
   border-bottom: 0;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
@@ -112,7 +118,8 @@
   }
 
   .home-building {
+    --door: clamp(90px, calc((100dvh - 380px) * 0.75), 40vw);
     gap: var(--space-4);
-    padding: var(--space-8) var(--space-4) 0;
+    padding: var(--space-6) var(--space-4) 0;
   }
 }

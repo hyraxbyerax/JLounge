@@ -1,6 +1,10 @@
+/* 페이지는 화면에 딱 맞게 고정하고, 방이 많을 때만 건물 안(창문들)이 스크롤된다 */
 .lobby {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .lobby-header {
@@ -51,8 +55,10 @@
 .building {
   position: relative;
   flex: 1;
-  margin: var(--space-6) var(--space-8) 0;
-  padding: var(--space-12) var(--space-8) var(--space-12);
+  min-height: 0;
+  margin: 0 var(--space-8);
+  padding: var(--space-8) var(--space-8) var(--space-6);
+  overflow-y: auto;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: var(--color-surface);
 }
@@ -70,7 +76,7 @@
 .building-toolbar {
   display: flex;
   justify-content: flex-end;
-  margin-bottom: var(--space-8);
+  margin-bottom: var(--space-4);
 }
 
 .filter-toggle {
