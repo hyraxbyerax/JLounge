@@ -91,107 +91,153 @@ TEST_REDIS_URL=redis://localhost:6379 TEST_DATABASE_URL=<.env의 DATABASE_URL> n
 | `INSTANCE_NAME` | | 플래너 화면 아래 "응답 서버" 이름 (시연용) |
 | `WEB_DIST_DIR` | | 화면 빌드 폴더. 주면 서버가 화면까지 같은 주소로 내보냄. Docker 이미지에는 이미 설정됨, 개발 중에는 비움 |
 
-## AWS 배포 담당에게
+## AWS 배포 가이드 (AWS 담당 팀원용)
 
-코드는 AWS 없이 개발했고, 아래만 맞추면 올라가도록 만들어 두었다. 대부분은 AWS 자원을 만들고 환경 변수를 넣는 일이다.
+이 가이드대로 하면 **ALB 주소 하나(`http://...elb.amazonaws.com`)로 사이트 전체가 열린다.** 코드는 고칠 필요 없고, AWS 자원을 만들어 환경 변수만 넣으면 된다. 우리는 **AWS Academy Learner Lab** 계정을 쓰므로, 모든 내용은 Learner Lab 기준이다.
 
-우리는 **AWS Academy Learner Lab** 계정으로 배포한다. 일반 AWS 계정과 제약이 달라서, 아래 구조와 순서는 Learner Lab 기준으로 정했다. Learner Lab에서 쓸 수 있는 서비스는 바뀔 수 있으니 시작 전에 랩 콘솔에서 직접 확인한다.
+위에서부터 순서대로 읽으면 된다: 구조를 이해하고(1) → Learner Lab의 제약을 알고(2) → 순서대로 만들고(3) → 막히면 문제 해결(4)을 본다.
 
-| 서비스 | 우리 랩에서 확인한 결과 (2026-11-25) |
-| --- | --- |
-| CloudFront | ❌ 막혀 있음 (`cloudfront:ListDistributions` 권한 없음) → 화면은 서버가 함께 내보낸다 |
-| ElastiCache | Valkey 캐시 생성 화면까지 열림 (us-east-1). ⚠ 기본값 "서버리스"가 아니라 **노드 기반**으로 만든다 (아래 표) |
-| ECS·Fargate | "Fargate 전용" 클러스터 생성 화면까지 열림. 빈 클러스터는 무료라 먼저 만들어 확정해도 된다 |
-| Cognito | 콘솔 열림. 사용자 풀이 만들어지는지는 배포 때 확인 |
-
-### Learner Lab 제약과 대응
-
-| 제약 | 영향 | 대응 |
-| --- | --- | --- |
-| 리전은 `us-east-1`, `us-west-2`만 | 다른 리전 자원 생성 불가 | 모든 자원을 `us-east-1` 한곳에 만든다 |
-| IAM 역할·사용자를 새로 못 만듦 | 역할이 필요한 설정에서 막힘 | 미리 있는 **`LabRole`** 을 쓴다. ECS 작업 실행 역할·작업 역할 = `LabRole`, EC2 = `LabInstanceProfile`. 새 역할이 필요한 기능(ECS 자동 확장 등)은 안 될 수 있다 |
-| 세션은 최대 4시간 | 세션이 끝나면 EC2 등 실행 중인 자원이 멈출 수 있다 (만든 자원 자체는 남음) | 시연 전에 랩을 시작하고 서버가 다시 떴는지(`/health`) 확인한다 |
-| 예산이 정해져 있음 (보통 $100) | 다 쓰면 랩이 막힌다 | ALB·RDS·ElastiCache는 켜 두기만 해도 요금이 나간다. 가장 작은 사양, NAT 게이트웨이 만들지 않기, 시연이 끝나면 삭제. 사용 금액은 랩 화면에서 확인 (Budgets는 못 쓸 수 있음) |
-| 접속 키가 임시 (세션마다 바뀜) | 로컬 AWS CLI 설정이 세션마다 만료 | 랩 화면 "AWS Details"에서 키를 세션마다 다시 복사. GitHub Actions 자동 배포는 비추천 |
-| 도메인 구입·인증서 발급이 어려움 | https 정식 주소를 만들기 어렵다 | ALB 주소(`http://...elb.amazonaws.com`)로 접속한다. 사이트 기능은 http에서도 모두 동작 (복사 버튼만 링크를 화면에 보여주는 방식으로 바뀜) |
-| 일부 서비스가 막혀 있음 (CloudFront 확인됨) | S3 + CloudFront로 화면을 올릴 수 없다 | 서버 이미지에 화면을 넣어 같은 주소로 내보낸다. 아래 기본 구조는 CloudFront·Route 53·Cognito 없이도 돌아간다 |
-
-### 전체 구조 (Learner Lab 기본안)
+### 1. 한눈에 보는 구조
 
 ```
 사용자 브라우저
-   │ http://<ALB 주소>
+   │  http://<ALB 주소>
    ▼
-ALB ──▶ ECS Fargate 서버 2대 (화면 파일 + API + 실시간) ──▶ ElastiCache (실시간 상태: 방·채팅·음악·게임)
-            │                                       └──▶ RDS PostgreSQL (회원·친구·일정·시간표)
-            └── CloudWatch Logs (서버 로그)
+ALB (로드밸런서)
+   │
+   ▼
+ECS Fargate 서버 2대  ── 화면 + API + 실시간(WebSocket)을 한 이미지가 모두 담당
+   ├──▶ ElastiCache (Valkey)   방·채팅·음악·게임처럼 실시간으로 바뀌는 상태
+   ├──▶ RDS (PostgreSQL)        회원·친구·1:1 대화·일정처럼 오래 남는 데이터
+   └──▶ CloudWatch Logs         서버 로그
 ```
 
-- 화면과 서버를 **같은 주소(ALB)** 에서 내보낸다. 화면은 API를 같은 주소의 `/api`, `/socket.io`로 부르기 때문에 이렇게 하면 추가 설정이 없다.
-- Docker 이미지에 화면 빌드(`apps/web/dist`)가 들어 있고, 서버가 `/`, `/room/{코드}` 같은 화면 주소에 화면을 내보낸다 (`WEB_DIST_DIR`, `apps/server/src/shared/http/webApp.ts`). 그래서 **ALB 주소 하나로 사이트 전체가 열린다.** 따로 할 일 없음.
-- 라운지 본체는 실시간 연결(WebSocket)을 계속 붙잡고, 1초·0.5초마다 음악·게임 타이머를 확인하므로 **계속 켜져 있는 서버(ECS)** 가 맞다. Lambda는 본체에 맞지 않는다.
-- ECS Fargate를 못 쓰면 **EC2 2대**(`LabInstanceProfile`)에 Docker로 같은 이미지를 띄우고 ALB에 붙인다. 구조는 같다.
+이렇게 짠 이유는 세 가지다.
 
-### 쓰는 AWS 기능
+- **서버가 화면까지 내보낸다.** Learner Lab에서는 CloudFront가 막혀 있어서, 화면 파일을 Docker 이미지 안에 넣어 두었다. 화면이 API를 같은 주소의 `/api`, `/socket.io`로 부르므로 따로 설정할 것이 없다.
+- **서버는 계속 켜져 있어야 한다(ECS).** 방에 있는 동안 WebSocket 연결을 붙잡고, 1초·0.5초마다 음악·게임 시간을 확인하기 때문에 요청이 올 때만 켜지는 Lambda는 맞지 않는다.
+- **서버를 여러 대로 늘려도 된다.** 상태는 전부 Redis·DB에 있어서 어느 서버에 붙어도 같은 화면을 본다. 소켓은 WebSocket만 써서 **고정 세션(sticky)도 필요 없다.** (로컬에서 서버 2대 + nginx로 확인했다: `docker compose --profile multi up`)
 
-| 구분 | AWS 기능 | 어디에 | 메모 |
-| --- | --- | --- | --- |
-| 필수 | ECR | 서버 이미지 보관 | ECS가 여기서 가져감 |
-| 필수 | ECS Fargate (안 되면 EC2) | 서버 + 화면 파일 | `Dockerfile` 기반. 2대로 "서버 여러 대" 시연. 역할은 `LabRole` |
-| 필수 | ALB | 서버 앞단, 사이트 주소 | 상태 확인 `/health`, WebSocket 지원, sticky 불필요 |
-| 필수 | ElastiCache (Valkey) | 실시간 상태 | **노드 기반 캐시**(서버리스 ❌), **클러스터 모드 끔**, 노드 1개, 가장 작은 사양 |
-| 필수 | RDS (PostgreSQL) | 회원·친구·일정 | 가장 작은 사양, 단일 AZ. 18이 없으면 16·17도 된다 (18 전용 기능 안 씀) |
-| 필수 | CloudWatch Logs | 서버 로그 | ECS 로그 설정만 켜면 됨. 로그가 한 줄 JSON이라 검색이 쉬움 |
-| 랩에서 되면 | Cognito | 로그인·회원가입 | 코드 교체 필요 (아래 "Cognito로 바꿀 때"). 안 되면 지금 이메일 로그인 그대로 |
-| 랩에서 되면 | Secrets Manager | `AUTH_SECRET`, DB 비밀번호, `YOUTUBE_API_KEY` | 안 되면 ECS 작업 정의의 환경 변수에 직접 넣는다 (저장소에는 절대 커밋하지 않음) |
-| 랩에서 되면 | CloudWatch 알람 | 서버 이상 알림 | `/health` 실패, 작업 수 감소 |
-| 어려움 | Route 53 + ACM | 도메인 + https | 도메인 구입이 필요해 Learner Lab에선 생략 |
-| 어려움 | ECS 자동 확장, Budgets, WAF | | 역할·권한 제약으로 막힐 수 있다. 서버 대수는 손으로 2대 고정 |
-| 어려움 | GitHub Actions 자동 배포 | | 접속 키가 세션마다 바뀐다 |
+### 2. 시작 전에: Learner Lab에서 알아둘 것
 
-### 추천 순서
+| Learner Lab의 제약 | 우리가 하는 일 |
+| --- | --- |
+| 리전은 `us-east-1`, `us-west-2`만 된다 | 모든 자원을 **`us-east-1`** 한곳에 만든다 |
+| IAM 역할을 새로 만들 수 없다 | 미리 있는 **`LabRole`** 을 쓴다 (ECS 작업 실행 역할·작업 역할 모두). ECS 자동 확장처럼 새 역할이 필요한 기능은 막힐 수 있어서 서버는 **2대로 고정**한다 |
+| CloudFront가 막혀 있다 (2026-11-25 확인) | 화면은 서버가 내보낸다 (위 구조) |
+| 세션은 최대 4시간, 끝나면 서버가 멈출 수 있다 | 시연 전에 랩을 시작하고 `/health`로 서버가 살아 있는지 확인한다 |
+| 접속 키가 세션마다 바뀐다 | 로컬 AWS CLI는 세션마다 랩 화면 "AWS Details"의 키로 다시 설정한다 |
+| 예산이 정해져 있다 (보통 $100) | 가장 작은 사양으로 만들고, **NAT 게이트웨이는 만들지 않고**, 시연이 끝나면 지운다. ALB·RDS·ElastiCache는 켜 두기만 해도 요금이 나간다 |
+| 도메인·인증서를 만들기 어렵다 | ALB 주소(`http://`)로 접속한다. https가 없으므로 시연 때 **"평소 쓰는 비밀번호 말고 테스트용 비밀번호로 가입"** 하도록 안내한다 |
 
-1. **랩 확인**: 랩 시작 → 리전 `us-east-1` → ECS 클러스터 만들기, ElastiCache 만들기가 되는지 확인
-2. **네트워크**: 기본 VPC와 퍼블릭 서브넷 사용 (NAT 게이트웨이 만들지 않기). 보안 그룹 4개: ALB(80 공개) / 서버(3000, ALB에서만) / RDS(5432, 서버에서만) / ElastiCache(6379, 서버에서만)
-3. **RDS, ElastiCache 만들기**: 가장 작은 사양. 만들어지는 데 시간이 걸리니 먼저 시작해 둔다
-4. **이미지 올리기**: 로컬에서 `docker build` → 랩 "AWS Details"의 키로 AWS CLI 설정 → ECR에 push
-5. **ECS**: 클러스터 → 작업 정의 (이미지, 3000번 포트, 환경 변수, 실행 역할·작업 역할 `LabRole`, 로그 켜기) → 서비스 2개 작업 (퍼블릭 IP 켜기, ALB 대상 그룹 상태 확인 경로 `/health`)
-6. **DB 테이블 만들기**: 같은 작업 정의를 명령만 바꿔 한 번 실행 (`node --disable-warning=ExperimentalWarning apps/server/src/shared/db/migrate.ts`)
-7. **확인**: `http://<ALB 주소>/health`가 200 → 브라우저 두 개로 같은 방에서 채팅·음악·게임 → 작업 하나를 멈춰도 이어지는지
-8. **여유 있으면**: Cognito, Secrets Manager, 알람
-9. **끝나면 삭제**: ECS 서비스(작업 0개) → ALB → ElastiCache → RDS → ECR 이미지 순서. 남겨 두면 예산이 계속 줄어든다
+### 3. 배포 순서
 
-> 환경 변수 (ECS 작업 정의): `NODE_ENV=production`, `PORT=3000`, `TRUST_PROXY=true`, `REDIS_URL=redis://<ElastiCache 기본 엔드포인트>:6379`, `DATABASE_URL=postgres://<사용자>:<비밀번호>@<RDS 엔드포인트>:5432/<DB 이름>`, `AUTH_SECRET=<32자 이상 무작위, 두 서버 같은 값. .env.example 의 개발용 값을 쓰면 서버가 켜지지 않는다>`, `YOUTUBE_API_KEY=<선택>`. ElastiCache에서 전송 중 암호화를 켰다면 `rediss://`로 쓴다.
+**① 랩 시작** — 랩을 시작하고 리전을 `us-east-1`로 맞춘다.
 
-### 세부 사항
+**② 네트워크와 보안 그룹** — 기본 VPC와 퍼블릭 서브넷을 그대로 쓴다. 보안 그룹은 네 개를 만들고, 각자 바로 앞 단계에서 오는 연결만 허용한다.
 
-**서버**
-- 이미지: 저장소 루트에서 `docker build -t lounge-server .` (Node 24, 3000번 포트, 서버 + 화면). ECS/EC2 어디든 같다. 로컬 확인: `docker run --env-file .env -p 3000:3000 lounge-server` → http://localhost:3000 (이때 `.env`의 `localhost` 주소는 `host.docker.internal`로 바꾼다)
-- 상태 확인: `GET /health` → Redis·DB 정상이면 200, 아니면 503. 종료 중에도 503이라 로드밸런서가 새 연결을 보내지 않는다.
-- 종료: SIGTERM을 받으면 새 연결을 막고 정리한 뒤 끈다 (`SHUTDOWN_TIMEOUT_MS`). 끊긴 사용자는 다른 서버로 자동 재접속.
-- 마이그레이션은 서버 시작과 따로 한 번: `docker run --env-file .env lounge-server node --disable-warning=ExperimentalWarning apps/server/src/shared/db/migrate.ts`
-- 서버 여러 대 OK: 서버 메모리에 상태를 두지 않는다. 소켓은 WebSocket만 써서 **고정 세션(sticky)이 필요 없다**. 로드밸런서 유휴 시간 제한은 60초 이상이면 된다.
-- 로드밸런서 뒤에서는 `TRUST_PROXY=true`.
+| 보안 그룹 | 들어오는 연결 허용 |
+| --- | --- |
+| `jlounge-alb` | 80번, 어디서나 (0.0.0.0/0) |
+| `jlounge-server` | 3000번, `jlounge-alb`에서만 |
+| `jlounge-db` | 5432번, `jlounge-server`에서만 |
+| `jlounge-redis` | 6379번, `jlounge-server`에서만 |
 
-**Redis (ElastiCache)**: Valkey, **노드 기반 캐시 + 클러스터 모드 끔**(단일 샤드). 서버는 방·참가자·채팅처럼 여러 키를 Lua 스크립트 하나로 함께 바꾸는데, 서버리스나 클러스터 모드는 키를 여러 샤드에 나눠 두어 이 스크립트가 `CROSSSLOT` 오류로 실패한다. 서버리스는 쓰지 않아도 최소 요금이 나가는 점도 있다.
+**③ RDS와 ElastiCache 만들기** — 만들어지는 데 10분 넘게 걸리므로 가장 먼저 시작해 둔다.
 
-| ElastiCache 생성 화면 | 선택 |
+| RDS (PostgreSQL) | 선택 |
+| --- | --- |
+| 엔진 버전 | PostgreSQL 16 이상 (로컬은 18) |
+| 템플릿·사양 | 프리 티어 또는 가장 작은 사양, 단일 AZ |
+| 마스터 사용자·비밀번호 | 정해서 적어 둔다 (나중에 `DATABASE_URL`에 넣음) |
+| **초기 데이터베이스 이름** | **`lounge`** (비워 두면 DB가 만들어지지 않는다) |
+| 퍼블릭 액세스 / 보안 그룹 | 아니요 / `jlounge-db` |
+
+| ElastiCache | 선택 |
 | --- | --- |
 | 엔진 | Valkey |
-| 배포 옵션 | 노드 기반 캐시 |
-| 클러스터 모드 | 비활성화 |
-| 노드 유형 | `cache.t3.micro` 또는 `cache.t4g.micro` |
-| 복제본 / 다중 AZ | 0개 / 끔 |
+| **배포 옵션** | **노드 기반 캐시** (기본값인 "서버리스" ❌) |
+| **클러스터 모드** | **비활성화** |
+| 노드 유형 / 복제본 / 다중 AZ | `cache.t3.micro` 또는 `cache.t4g.micro` / 0개 / 끔 |
 | 전송 중 암호화 | 끄면 `REDIS_URL=redis://...`, 켜면 `rediss://...` |
+| 보안 그룹 | `jlounge-redis` |
 
-**PostgreSQL (RDS)**: 로컬은 18로 개발했고, 16 이상이면 된다. `DATABASE_URL` 하나로 접속.
+서버리스·클러스터 모드를 피하는 이유: 서버는 방·참가자·채팅처럼 여러 값을 한 번에 함께 바꾸는데, 서버리스·클러스터 모드는 값을 여러 칸에 나눠 저장해서 이 작업이 `CROSSSLOT` 오류로 실패한다. 서버리스는 쓰지 않아도 최소 요금이 나가는 점도 있다.
 
-**화면**: `npm run build -w @lounge/web` → `apps/web/dist`. 화면은 API를 **같은 주소의** `/api`, `/socket.io`, `/health`로 부른다. Learner Lab에서는 서버가 화면 파일까지 내보내는 방식(Docker 이미지 기본값)으로 같은 주소를 맞춘다. 일반 AWS 계정이라면 S3 + CloudFront에 화면을 올리고 세 경로를 ALB로 넘기는 방식도 된다(`/socket.io`는 WebSocket 허용). 화면과 서버를 다른 주소로 나누려면 화면에 서버 주소 설정을 추가해야 한다.
+**④ 이미지 만들어 ECR에 올리기** — 저장소 루트에서 실행한다. 랩 "AWS Details"의 키로 AWS CLI를 먼저 설정하고, `<계정ID>`는 랩 화면에 보이는 12자리 숫자로 바꾼다.
 
-**Cognito로 바꿀 때** (지금은 이메일+비밀번호 로컬 로그인)
-- 서버: `apps/server/src/shared/auth/AuthProvider.ts` 인터페이스의 Cognito 구현을 만들어 `localAuth.ts` 대신 끼운다. 사용자는 `users.auth_sub`(Cognito `sub`, unique)로 연결한다. `/api/users/signup`, `/login`은 없어진다.
-- 화면: `apps/web/src/shared/api/session.ts`의 `signIn`이 Cognito를 부르게 바꾸고, `shared/auth/LoginPage.tsx` 폼을 맞춘다. 나머지(세션 저장·구독)는 그대로.
-- 게스트(로그인 없이 방 입장)는 서버가 직접 발급하는 토큰이라 Cognito와 상관없이 그대로 둔다.
-- 지금 로컬에서 가입한 계정은 Cognito로 옮겨지지 않는다.
+```bash
+aws ecr create-repository --repository-name jlounge --region us-east-1
+aws ecr get-login-password --region us-east-1 | docker login --username AWS --password-stdin <계정ID>.dkr.ecr.us-east-1.amazonaws.com
+docker build --platform linux/amd64 -t jlounge .
+docker tag jlounge:latest <계정ID>.dkr.ecr.us-east-1.amazonaws.com/jlounge:latest
+docker push <계정ID>.dkr.ecr.us-east-1.amazonaws.com/jlounge:latest
+```
 
-**비밀 값**: `AUTH_SECRET`, DB 비밀번호, `YOUTUBE_API_KEY`는 Secrets Manager 등에 두고 환경 변수로 넣는다. `.env`는 커밋하지 않는다.
+이미지 하나에 서버와 화면이 모두 들어 있다 (Node 24, 3000번 포트). `--platform linux/amd64`는 맥(M 칩)에서 만들 때 Fargate와 맞추기 위한 것이다.
+
+**⑤ ECS 작업 정의** — Fargate, 이미지는 ④에서 올린 주소, 컨테이너 포트 3000, 작업 실행 역할·작업 역할은 `LabRole`, 로그 수집(CloudWatch Logs) 켜기. 환경 변수는 이렇게 넣는다.
+
+| 환경 변수 | 값 |
+| --- | --- |
+| `NODE_ENV` | `production` |
+| `PORT` | `3000` |
+| `TRUST_PROXY` | `true` (ALB 뒤라서) |
+| `DATABASE_URL` | `postgres://<마스터 사용자>:<비밀번호>@<RDS 엔드포인트>:5432/lounge?sslmode=no-verify` |
+| `REDIS_URL` | `redis://<ElastiCache 기본 엔드포인트>:6379` |
+| `AUTH_SECRET` | 32자 이상 무작위 값: `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"` |
+| `YOUTUBE_API_KEY` | 유튜브 Data API 키 (없으면 예시 곡만 검색. 발급은 위 "꼭 기억할 점") |
+
+- `?sslmode=no-verify`는 꼭 붙인다. RDS(PostgreSQL 15 이상)는 암호화 연결만 받는데, 이 옵션이 있어야 암호화해서 접속한다.
+- `AUTH_SECRET`은 로그인 도장(서명) 키다. 서버 여러 대가 **모두 같은 값**이어야 하고, `.env.example`의 개발용 값을 넣으면 서버가 일부러 켜지지 않는다.
+- 비밀 값(`AUTH_SECRET`, DB 비밀번호, 유튜브 키)은 Secrets Manager가 되면 거기에 두고, 안 되면 작업 정의에 직접 넣는다. 저장소에는 절대 올리지 않는다.
+
+**⑥ DB 테이블 만들기 (한 번만)** — 같은 작업 정의로 "새 태스크 실행"을 하되, 명령만 아래로 바꿔서 한 번 돌린다. 로그에 "마이그레이션 완료"가 보이면 끝이다. 나중에 새 버전을 올릴 때도 이것만 다시 돌리면 된다 (이미 만든 테이블은 건너뛴다).
+
+```
+node,--disable-warning=ExperimentalWarning,apps/server/src/shared/db/migrate.ts
+```
+
+**⑦ ALB와 ECS 서비스** — ALB(인터넷 연결, 보안 그룹 `jlounge-alb`, 리스너 HTTP 80)를 만들고, 대상 그룹(대상 유형 IP, 포트 3000, 상태 확인 경로 **`/health`**)에 연결한다. 그다음 ECS 서비스를 원하는 작업 수 **2**, 퍼블릭 IP 켜기, 보안 그룹 `jlounge-server`, 위 대상 그룹으로 만든다. ALB 유휴 시간 제한은 기본 60초 그대로 두면 된다.
+
+**⑧ 확인**
+
+- [ ] `http://<ALB 주소>/health` → `{"data":{"redis":"ok","db":"ok"}}`
+- [ ] `http://<ALB 주소>` 에서 메인 화면(JLounge)이 열린다
+- [ ] 브라우저 두 개(일반 창 + 시크릿 창)로 같은 방에 들어가 채팅·음악·게임이 실시간으로 된다
+- [ ] 회원가입·로그인, 캠퍼스 플래너가 된다
+- [ ] ECS 작업 하나를 멈춰도 방이 이어진다 (다른 서버로 자동 재접속 — "서버 여러 대" 시연)
+
+**⑨ 시연이 끝나면 지우기** — ECS 서비스(작업 수 0 → 삭제) → ALB·대상 그룹 → ElastiCache → RDS → ECR 이미지 순서로 지운다. 남겨 두면 예산이 계속 줄어든다.
+
+### 4. 막힐 때
+
+| 증상 | 원인과 해결 |
+| --- | --- |
+| 작업이 켜졌다 바로 꺼지고, 로그에 "운영에서는 개발용 AUTH_SECRET 을 쓸 수 없어요" | `AUTH_SECRET`을 무작위 값으로 바꾼다 |
+| 로그에 "환경 변수 설정이 잘못됐어요" | 로그에 빠진 이름이 나온다. ⑤ 표대로 채운다 |
+| `/health`가 503이고 `"db":"down"` | `jlounge-db` 보안 그룹이 서버에서 오는 5432를 허용하는지, `DATABASE_URL` 끝에 `?sslmode=no-verify`가 있는지, 초기 DB 이름이 `lounge`인지 |
+| `/health`가 503이고 `"redis":"down"` | `jlounge-redis` 보안 그룹, 전송 중 암호화를 켰다면 `rediss://`인지 |
+| 방 만들기·채팅에서 `CROSSSLOT` 오류 | ElastiCache가 서버리스이거나 클러스터 모드다. 노드 기반·클러스터 모드 끔으로 다시 만든다 |
+| 회원가입·플래너에서 오류 (테이블이 없다는 로그) | ⑥ DB 테이블 만들기를 안 했다 |
+| 대상 그룹 상태가 계속 unhealthy | 상태 확인 경로가 `/health`인지, 포트 3000인지, `jlounge-server`가 ALB에서 오는 3000을 허용하는지 |
+| 서버를 바꿔 붙으면 로그인이 풀린다 | 서버마다 `AUTH_SECRET`이 다르다. 모든 작업이 같은 값을 쓰게 한다 |
+| 다음 날 사이트가 안 열린다 | Learner Lab 세션이 끝나 서버가 멈췄다. 랩을 시작하고 ECS 작업이 2개로 다시 떴는지 확인한다 |
+
+### 5. 여유가 있으면
+
+- **CloudWatch 알람**: `/health` 실패나 실행 중인 작업 수 감소를 알림으로.
+- **Cognito로 로그인 바꾸기** (지금은 이메일+비밀번호 로그인)
+  - 서버: `apps/server/src/shared/auth/AuthProvider.ts` 인터페이스의 Cognito 구현을 만들어 `localAuth.ts` 대신 끼운다. 회원은 `users.auth_sub`(Cognito `sub`)로 연결하고, `/api/users/signup`·`/login`은 없어진다.
+  - 화면: `apps/web/src/shared/api/session.ts`의 `signIn`이 Cognito를 부르게 하고 `shared/auth/LoginPage.tsx` 폼을 맞춘다. 세션 저장·구독은 그대로 쓴다.
+  - 게스트(로그인 없이 방 입장)는 서버가 직접 토큰을 주므로 그대로 둔다. 기존 이메일 계정은 Cognito로 옮겨지지 않는다.
+  - Cognito를 쓰면 로그인이 AWS의 https 화면에서 처리되어, 2번의 "http 비밀번호" 걱정이 사라진다.
+- **일반 AWS 계정이라면**: 화면을 S3 + CloudFront에 올리고 `/api`, `/socket.io`(WebSocket 허용), `/health`만 ALB로 넘기는 구성도 된다. Route 53 + ACM으로 https 정식 주소를 붙일 수 있다.
+
+### 참고: 서버가 하는 일
+
+- `GET /health`: Redis·DB가 정상이면 200, 아니면 503. 서버가 종료 중일 때도 503이라 ALB가 새 연결을 보내지 않는다.
+- 종료: SIGTERM을 받으면 새 연결을 막고 정리한 뒤 끈다 (`SHUTDOWN_TIMEOUT_MS`, 기본 10초). 끊긴 사용자는 다른 서버로 자동 재접속한다.
+- 로그: 한 줄 JSON으로 stdout에 남는다 → CloudWatch Logs에서 검색하기 쉽다.
+- 이미지 로컬 확인: `docker build -t jlounge .` → `docker run --env-file .env -p 3000:3000 jlounge` → http://localhost:3000 (이때 `.env`의 `localhost`는 `host.docker.internal`로 바꾼다).
+- 전체 환경 변수 목록은 위 "환경 변수 (서버)" 표에 있다.
