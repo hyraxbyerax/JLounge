@@ -529,6 +529,52 @@ code {
   background: var(--color-surface);
 }
 
+/* 오른쪽 칸 탭: [방 채팅 | 친구] (넓은 화면) */
+.side-tabs {
+  display: grid;
+  flex: none;
+  grid-template-columns: 1fr 1fr;
+  border-bottom: var(--pixel) solid var(--color-line);
+}
+
+.side-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  min-height: 48px;
+  border: 0;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--text-14);
+  cursor: pointer;
+}
+
+.side-tab + .side-tab {
+  border-left: var(--pixel) solid var(--color-line);
+}
+
+.side-tab[aria-selected='true'] {
+  background: var(--color-surface);
+  color: var(--color-text);
+}
+
+.side-tab-sub {
+  color: var(--color-online);
+}
+
+.side-pane {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.side-pane[hidden] {
+  display: none;
+}
+
 .members {
   border-bottom: 1px solid var(--color-surface-2);
 }

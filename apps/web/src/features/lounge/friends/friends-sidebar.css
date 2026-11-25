@@ -36,6 +36,12 @@
   background: color-mix(in srgb, var(--color-bg) 60%, transparent);
 }
 
+/* 방 안 오른쪽 [방 채팅 | 친구] 탭 안: 칸을 꽉 채운다 */
+.friends-side.is-tab {
+  flex: 1;
+  min-height: 0;
+}
+
 /* 캠퍼스 플래너 오른쪽 칸 안 */
 .friends-side.is-embedded {
   height: min(640px, calc(100vh - 120px));

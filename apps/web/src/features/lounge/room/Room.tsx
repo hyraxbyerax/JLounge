@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useReducer, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react';
 import { errorMessage } from '../../../shared/api/ApiError';
 import { LoginDialog } from '../../../shared/auth/LoginPage';
 import { friendsApi } from '../friends/friendsApi';
@@ -49,8 +49,13 @@ type Props = {
   /** 방금 만든 방인지 (만든 사람에게만 안내를 보여준다) */
   created: boolean;
   onLeave: () => void;
-  /** 친구 창 (로그인한 회원만). 없으면 게스트라 [로그인]을 보여준다 */
+  /** 친구 서랍 열기 (좁은 화면, 로그인한 회원만) */
   onFriends?: () => void;
+  /** 넓은 화면: 오른쪽 칸의 [친구] 탭에 넣을 친구 현황판 */
+  friendsPanel?: ReactNode;
+  /** 오른쪽 칸에서 보고 있는 탭 (App 이 알아야 1:1 메시지 알림을 띄울지 정한다) */
+  sideTab?: 'chat' | 'friends';
+  onSideTab?: (tab: 'chat' | 'friends') => void;
 };
 
 type Tab = 'chat' | 'queue' | 'members';
@@ -62,7 +67,16 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'members', label: '참가자' },
 ];
 
-export function Room({ session, me, created, onLeave, onFriends }: Props) {
+export function Room({
+  session,
+  me,
+  created,
+  onLeave,
+  onFriends,
+  friendsPanel,
+  sideTab = 'chat',
+  onSideTab = () => {},
+}: Props) {
   const room = session.view;
   const [state, dispatch] = useReducer(roomReducer, null, () =>
     createRoomState(me, created ? '방을 만들었어요. 초대 링크로 친구를 불러보세요' : undefined),
@@ -70,6 +84,8 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
   const { overview: friends, reload: reloadFriends } = useFriends();
   const friendIds = useMemo(() => new Set(friends?.friends.map((f) => f.userId)), [friends]);
   const pendingIds = useMemo(() => new Set(friends?.outgoing.map((f) => f.userId)), [friends]);
+  const friendsOnline = friends?.friends.filter((f) => f.presence.online).length ?? 0;
+  const friendsUnread = friends?.friends.reduce((sum, f) => sum + f.unread, 0) ?? 0;
   const members = useMemo(() => toMembers(room, friendIds), [room, friendIds]);
   const botJoined = members.some((m) => m.id === BOT.id);
   const isMobile = useMediaQuery('(max-width: 767px)');
@@ -402,18 +418,55 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
             {gamePanel && <div className="room-game">{gamePanel}</div>}
           </div>
           <aside className="room-side">
-            <div className="members">
-              <button
-                type="button"
-                className="members-toggle"
-                aria-expanded={membersOpen}
-                onClick={() => setMembersOpen((v) => !v)}
-              >
-                참가자 {members.length}명 <span aria-hidden="true">{membersOpen ? '▴' : '▾'}</span>
-              </button>
-              {membersOpen && memberList}
+            {friendsPanel && (
+              <div className="side-tabs" role="tablist" aria-label="오른쪽 칸">
+                <button
+                  type="button"
+                  role="tab"
+                  className="side-tab"
+                  aria-selected={sideTab === 'chat'}
+                  onClick={() => onSideTab('chat')}
+                >
+                  방 채팅
+                </button>
+                <button
+                  type="button"
+                  role="tab"
+                  className="side-tab"
+                  aria-selected={sideTab === 'friends'}
+                  onClick={() => onSideTab('friends')}
+                >
+                  친구
+                  {friendsOnline > 0 && <span className="side-tab-sub"> {friendsOnline}</span>}
+                  {friendsUnread > 0 && (
+                    <span className="fs-unread" aria-label={`안 읽은 메시지 ${friendsUnread}개`}>
+                      {friendsUnread > 99 ? '99+' : friendsUnread}
+                    </span>
+                  )}
+                </button>
+              </div>
+            )}
+            {/*
+              방 채팅은 늘 그대로 두고 보이기만 바꾼다 (쓰던 메시지·스크롤이 남게).
+              친구 탭은 볼 때만 띄운다 (안 보이는데 1:1 대화를 읽음으로 처리하지 않게)
+            */}
+            {friendsPanel && sideTab === 'friends' && <div className="side-pane">{friendsPanel}</div>}
+            <div className="side-pane" hidden={Boolean(friendsPanel) && sideTab === 'friends'}>
+              <>
+                <div className="members">
+                  <button
+                    type="button"
+                    className="members-toggle"
+                    aria-expanded={membersOpen}
+                    onClick={() => setMembersOpen((v) => !v)}
+                  >
+                    참가자 {members.length}명 <span aria-hidden="true">{membersOpen ? '▴' : '▾'}</span>
+                  </button>
+                  {membersOpen && memberList}
+                </div>
+                {chat}
+              </>
             </div>
-            {chat}
           </aside>
         </>
       )}

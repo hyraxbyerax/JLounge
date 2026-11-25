@@ -9,8 +9,11 @@ import './friends.css';
 import './friends-sidebar.css';
 
 type Props = {
-  /** docked: 넓은 화면 오른쪽에 늘 / drawer: 좁은 화면에서 밀려 나옴 / embedded: 캠퍼스 플래너 오른쪽 칸 */
-  variant: 'docked' | 'drawer' | 'embedded';
+  /**
+   * docked: 넓은 화면 오른쪽에 늘 / drawer: 좁은 화면에서 밀려 나옴 / embedded: 캠퍼스 플래너 오른쪽 칸
+   * tab: 방 안 오른쪽 [방 채팅 | 친구] 탭 안 (탭 이름이 있으니 제목 줄 없이)
+   */
+  variant: 'docked' | 'drawer' | 'embedded' | 'tab';
   /** 지금 들어가 있는 방 (있으면 친구에게 [초대]) */
   currentRoomCode?: string | null;
   onInvite?: (friend: FriendEntry) => Promise<void>;
@@ -77,7 +80,7 @@ export function FriendsSidebar({
 
   const shell = (body: ReactNode, title = '친구') => (
     <aside className={`friends-side is-${variant}`} aria-label="친구 현황판">
-      <header className="fs-head">
+      <header className={`fs-head${variant === 'tab' ? ' sr-only' : ''}`}>
         <h2 className="fs-title">{title}</h2>
         {onClose && (
           <button

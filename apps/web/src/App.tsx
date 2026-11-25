@@ -66,6 +66,8 @@ export function App() {
   const [friendsFolded, setFriendsFolded] = useState(() => readFolded());
   const [openChat, setOpenChat] = useState<string | null>(null);
   const [loginOpen, setLoginOpen] = useState(false);
+  // 방 안 오른쪽 칸: 방 채팅 / 친구
+  const [roomSideTab, setRoomSideTab] = useState<'chat' | 'friends'>('chat');
   const { overview: friends } = useFriends();
 
   const foldFriends = (folded: boolean) => {
@@ -82,7 +84,8 @@ export function App() {
 
   // 1:1 메시지 알림: 그 대화를 보고 있지 않으면 짧게 알려준다
   // (알림 판단에 쓰는 최신 값은 ref 로 읽는다. 듣기는 회원마다 한 번만 건다)
-  const panelVisible = docked ? !friendsFolded : friendsOpen;
+  const inRoomNow = screen.name === 'room' && Boolean(lounge.session);
+  const panelVisible = docked ? (inRoomNow ? roomSideTab === 'friends' : !friendsFolded) : friendsOpen;
   const latest = useRef({ friends, panelVisible, openChat });
   latest.current = { friends, panelVisible, openChat };
   const memberId = member?.userId ?? null;
@@ -229,8 +232,8 @@ export function App() {
   };
   // 넓은 화면에서는 현황판이 늘 보이므로 화면의 [친구] 버튼은 좁은 화면에서만
   const openDrawer = member && !docked ? () => setFriendsOpen(true) : undefined;
-  // 캠퍼스 플래너는 자기 오른쪽 칸에 현황판을 넣는다. 로그인 화면에는 두지 않는다
-  const dockHere = docked && screen.name !== 'schedule' && screen.name !== 'login';
+  // 캠퍼스 플래너는 자기 오른쪽 칸에, 방 안은 오른쪽 [방 채팅 | 친구] 탭에 현황판을 넣는다. 로그인 화면에는 두지 않는다
+  const dockHere = docked && screen.name !== 'schedule' && screen.name !== 'login' && !inRoom;
 
   return (
     <div className={dockHere ? 'app-shell' : undefined} style={dockHere ? undefined : { height: '100%' }}>
@@ -266,6 +269,9 @@ export function App() {
             created={screen.created}
             onLeave={leave}
             onFriends={openDrawer}
+            friendsPanel={docked ? <FriendsSidebar variant="tab" {...panelActions} /> : undefined}
+            sideTab={roomSideTab}
+            onSideTab={setRoomSideTab}
           />
         )}
         {screen.name === 'schedule' && (

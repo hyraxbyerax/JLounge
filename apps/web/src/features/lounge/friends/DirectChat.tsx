@@ -12,6 +12,10 @@ type Props = {
   onRead: () => void;
 };
 
+/** 두 목록을 합친다 (같은 메시지는 한 번, 보낸 순서대로). 불러오는 중에 오간 메시지도 잃지 않게 */
+const merge = (a: DirectMessage[], b: DirectMessage[]) =>
+  [...new Map([...a, ...b].map((m) => [m.id, m])).values()].sort((x, y) => Number(x.id) - Number(y.id));
+
 const timeOf = (iso: string) =>
   new Date(iso).toLocaleTimeString('ko-KR', { hour: 'numeric', minute: '2-digit', hour12: true });
 
@@ -32,7 +36,7 @@ export function DirectChat({ friend, meId, onRead }: Props) {
     friendsApi.messages(friendId).then(
       (list) => {
         if (!alive) return;
-        setMessages(list);
+        setMessages((cur) => merge(list, cur ?? []));
         setHasOlder(list.length === DM_PAGE_SIZE);
         stickToBottom.current = true;
       },
@@ -59,7 +63,7 @@ export function DirectChat({ friend, meId, onRead }: Props) {
         if (!mine && !theirs) return;
         const list = listRef.current;
         stickToBottom.current = !list || list.scrollHeight - list.scrollTop - list.clientHeight < 80;
-        setMessages((cur) => (cur && !cur.some((x) => x.id === m.id) ? [...cur, m] : cur));
+        setMessages((cur) => merge(cur ?? [], [m]));
         if (theirs) {
           void friendsApi.markRead(friendId).catch(() => undefined);
           onRead();
@@ -87,7 +91,7 @@ export function DirectChat({ friend, meId, onRead }: Props) {
     const older = await friendsApi.messages(friendId, messages[0]!.id);
     stickToBottom.current = false;
     setHasOlder(older.length === DM_PAGE_SIZE);
-    setMessages((cur) => [...older, ...(cur ?? [])]);
+    setMessages((cur) => merge(older, cur ?? []));
     // 보던 위치 유지
     requestAnimationFrame(() => {
       if (list) list.scrollTop = list.scrollHeight - before;
@@ -103,7 +107,7 @@ export function DirectChat({ friend, meId, onRead }: Props) {
       const sent = await friendsApi.sendMessage(friendId, value);
       setText('');
       stickToBottom.current = true;
-      setMessages((cur) => (cur && !cur.some((x) => x.id === sent.id) ? [...cur, sent] : cur));
+      setMessages((cur) => merge(cur ?? [], [sent]));
     } catch (err) {
       setError(errorMessage(err));
     }
