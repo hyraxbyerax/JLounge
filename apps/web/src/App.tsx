@@ -260,7 +260,6 @@ export function App() {
             onCode={(code) => void enter(code)}
             onCreate={create}
             onHome={toHome}
-            onSchedule={() => setScreen({ name: 'schedule' })}
             onFriends={openDrawer}
             notify={notify}
           />

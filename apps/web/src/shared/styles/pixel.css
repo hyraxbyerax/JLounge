@@ -81,6 +81,12 @@
   font-size: 24px;
 }
 
+/* 로비 왼쪽 위 JLounge 간판 (플래너 간판과 같은 굵은 픽셀) */
+.lobby-title {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+}
+
 .bubble {
   box-shadow: 2px 2px 0 var(--color-line);
 }

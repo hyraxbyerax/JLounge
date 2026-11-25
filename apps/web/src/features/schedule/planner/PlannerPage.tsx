@@ -15,7 +15,7 @@ export interface PlannerPageProps {
   onLogout: () => void;
   /** 오른쪽 패널. 라운지의 친구·접속 현황 컴포넌트를 넣는 자리 (기본: 안내 문구가 있는 FriendsPanel) */
   sidebar?: ReactNode;
-  /** 라운지로 돌아가기 (라운지 사이트에 합치며 추가) */
+  /** 첫 화면으로 (왼쪽 위 JLounge 간판을 누르면. 라운지 사이트에 합치며 추가) */
   onBack?: () => void;
 }
 
@@ -125,7 +125,16 @@ export function PlannerPage({ user, onLogout, sidebar, onBack }: PlannerPageProp
   return (
     <div className="planner">
       <header className="topbar">
-        <h1>캠퍼스 플래너</h1>
+        {/* 사이트 간판: 누르면 첫 화면으로 (라운지·플래너는 첫 화면에서만 고른다) */}
+        <h1>
+          {onBack ? (
+            <button type="button" className="brand-link" onClick={onBack} title="첫 화면으로">
+              JLounge
+            </button>
+          ) : (
+            'JLounge'
+          )}
+        </h1>
         <nav className="tabs" aria-label="화면 전환">
           <button className={tab === 'schedule' ? 'on' : ''} onClick={() => setTab('schedule')}>
             일정
@@ -135,11 +144,6 @@ export function PlannerPage({ user, onLogout, sidebar, onBack }: PlannerPageProp
           </button>
         </nav>
         <div className="who">
-          {onBack && (
-            <button className="btn small" onClick={onBack}>
-              라운지로
-            </button>
-          )}
           <span className="small muted">{user.nickname}</span>
           <button className="btn small" onClick={onLogout}>
             로그아웃

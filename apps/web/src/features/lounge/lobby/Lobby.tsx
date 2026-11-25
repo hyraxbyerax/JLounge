@@ -12,8 +12,8 @@ type Props = {
   onEnter: (room: RoomInfo, from?: DOMRect) => void;
   onCode: (code: string) => void;
   onCreate: (settings: RoomSettings) => Promise<void>;
+  /** 왼쪽 위 JLounge 간판을 누르면 첫 화면으로 (라운지·플래너는 첫 화면에서만 고른다) */
   onHome: () => void;
-  onSchedule: () => void;
   /** 친구 창 (로그인한 회원만) */
   onFriends?: () => void;
   notify: (message: string) => void;
@@ -29,17 +29,7 @@ function darkSlots(lit: number): number {
   return total - lit;
 }
 
-export function Lobby({
-  rooms,
-  defaultRoomName,
-  onEnter,
-  onCode,
-  onCreate,
-  onHome,
-  onSchedule,
-  onFriends,
-  notify,
-}: Props) {
+export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHome, onFriends, notify }: Props) {
   const [onlyEnterable, setOnlyEnterable] = useState(false);
   const [code, setCode] = useState('');
   const [creating, setCreating] = useState(false);
@@ -97,9 +87,6 @@ export function Lobby({
               친구
             </button>
           )}
-          <button type="button" className="btn btn-ghost" onClick={onSchedule}>
-            캠퍼스 플래너
-          </button>
         </div>
       </header>
 
