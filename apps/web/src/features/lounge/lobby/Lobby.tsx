@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { isEnterable, windowState, type RoomInfo, type RoomSettings } from '../model/room';
-import { BUILDING_NAME, buildingFloors, orderRooms, pageCount } from './building';
+import { buildingFloors, orderRooms, pageCount } from './building';
 import { RoomSettingsDialog } from '../room/RoomSettingsDialog';
 import { DarkWindow, WindowCard } from './WindowCard';
 import './lobby.css';
@@ -88,7 +88,6 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
 
       <main className="building">
         <div className="building-toolbar">
-          <span className="building-sign">{BUILDING_NAME}</span>
           <p className="building-note">
             {rooms === null
               ? '방을 찾고 있어요…'
@@ -102,8 +101,8 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
               입장 가능한 방만 보기
             </label>
           )}
-          {/* 방이 한 건물(36개)을 넘으면 다음 건물로 */}
-          {pages > 1 && (
+          {/* 오른쪽 위 페이지: 방이 한 건물(30개)을 넘으면 다음 건물로 (건물이 하나뿐이어도 1 / 1) */}
+          {
             <nav className="building-pager" aria-label="건물 페이지">
               <button
                 type="button"
@@ -127,7 +126,7 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
                 ▶
               </button>
             </nav>
-          )}
+          }
         </div>
         {/* 공과대학 7호관: 위가 6층, 아래가 1층. 방은 1층 101호부터, 빈 호실은 불 꺼진 문 */}
         <div className="floors window-grid">

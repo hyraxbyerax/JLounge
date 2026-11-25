@@ -34,7 +34,7 @@
 /* 라운지 건물(로비) */
 .building {
   border: var(--pixel) solid var(--color-line);
-  border-bottom: 0;
+  box-shadow: var(--pixel-shadow-lg);
 }
 
 /* 방 오른쪽(참가자·채팅), 모바일 탭 */

@@ -57,9 +57,10 @@
   flex: 1;
   flex-direction: column;
   min-height: 0;
-  margin: 0 var(--space-8);
-  padding: var(--space-6) var(--space-6) var(--space-4);
-  overflow-y: auto;
+  /* 아래도 띄워서 박스 아래 테두리가 보이는 사각형 건물로 (스크롤 없음) */
+  margin: 0 var(--space-8) var(--space-6);
+  padding: var(--space-4) var(--space-6) var(--space-4);
+  overflow: hidden;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: var(--color-surface);
 }
@@ -80,8 +81,8 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--space-4);
-  min-height: 44px;
-  margin-bottom: var(--space-3);
+  min-height: 40px;
+  margin-bottom: var(--space-2);
 }
 
 .building-note {
@@ -90,19 +91,7 @@
   font-size: var(--text-14);
 }
 
-/* 건물 간판: 공과대학 7호관 */
-.building-sign {
-  flex: none;
-  padding: var(--space-1) var(--space-3);
-  border: var(--pixel) solid var(--color-line);
-  background: var(--color-sofa);
-  box-shadow: var(--pixel-shadow);
-  font-family: var(--font-pixel);
-  font-size: var(--text-14);
-  font-weight: 700;
-}
-
-/* 다음 건물로 넘기기 (방이 36개를 넘을 때) */
+/* 오른쪽 위 페이지 표시 [◀ 1 / 1 ▶] (방이 30개를 넘으면 다음 건물) */
 .building-pager {
   display: flex;
   flex: none;
@@ -149,7 +138,7 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 2px;
   min-height: 0;
 }
 
@@ -159,7 +148,6 @@
   align-items: stretch;
   gap: var(--space-3);
   min-height: 0;
-  padding-bottom: var(--space-1);
   border-bottom: var(--pixel) solid var(--color-line);
 }
 
@@ -176,7 +164,7 @@
 .floor-rooms {
   display: grid;
   flex: 1;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 0 var(--space-4);
   min-height: 0;
 }
@@ -197,7 +185,7 @@
   gap: var(--space-2);
   width: 100%;
   height: 100%;
-  padding: var(--space-1) 0;
+  padding: 2px 0 0;
   border: 0;
   border-radius: var(--radius-window);
   background: none;
@@ -272,7 +260,7 @@
   position: relative;
   display: block;
   /* 문 높이 = 층 높이 (위아래 조금 띄움), 너비 = 높이의 0.6배 (칸 너비의 42%를 넘지 않게) */
-  --door-h: min(calc(100cqh - 8px), calc(100cqw * 0.42 / 0.6), 160px);
+  --door-h: min(calc(100cqh - 4px), calc(100cqw * 0.42 / 0.6), 170px);
   flex: none;
   width: calc(var(--door-h) * 0.6);
   height: var(--door-h);
@@ -536,7 +524,8 @@
   }
 
   .building {
-    margin: var(--space-4) var(--space-4) 0;
+    margin: var(--space-4) var(--space-4) var(--space-4);
+    overflow-y: auto;
     padding: var(--space-8) var(--space-4);
   }
 

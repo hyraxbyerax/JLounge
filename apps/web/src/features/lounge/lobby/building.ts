@@ -1,14 +1,13 @@
 /*
  * 로비 건물 = 공과대학 7호관 (2026-11-25 사용자 결정).
- * 6층 × 한 층 6호실 = 건물 하나에 36개. 먼저 만든 방부터 101호 → 102호 → … → 106호 → 201호 … 순서로 불이 켜지고,
- * 36개가 넘으면 다음 페이지(또 하나의 건물)로 넘어간다.
+ * 6층 × 한 층 5호실 = 건물 하나에 30개. 먼저 만든 방부터 101호 → 102호 → … → 105호 → 201호 … 순서로 불이 켜지고,
+ * 30개가 넘으면 다음 페이지(또 하나의 건물)로 넘어간다.
  */
 import type { RoomInfo } from '../model/room';
 
 export const FLOORS = 6;
-export const ROOMS_PER_FLOOR = 6;
+export const ROOMS_PER_FLOOR = 5;
 export const ROOMS_PER_BUILDING = FLOORS * ROOMS_PER_FLOOR;
-export const BUILDING_NAME = '공과대학 7호관';
 
 export type Slot = { number: string; room: RoomInfo | null };
 export type Floor = { floor: number; slots: Slot[] };
