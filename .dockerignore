@@ -6,5 +6,3 @@
 .env
 .env.*
 docs
-apps/web/src
-apps/web/public

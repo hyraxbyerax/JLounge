@@ -40,6 +40,14 @@ const schema = z.object({
     .enum(['true', 'false'])
     .default('false')
     .transform((v) => v === 'true'),
+  /**
+   * 화면 빌드 폴더(apps/web/dist). 주면 서버가 화면 파일까지 같은 주소로 내보낸다 (AWS Learner Lab처럼 CloudFront를 못 쓸 때).
+   * Docker 이미지에는 미리 넣어 두었다. 개발 중에는 비워둔다 (화면은 Vite가 띄움)
+   */
+  WEB_DIST_DIR: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || undefined),
   /** 캠퍼스 플래너 화면 아래 "응답 서버" 이름 (로드 밸런싱 시연용). 비우면 컴퓨터 이름 */
   INSTANCE_NAME: z
     .string()

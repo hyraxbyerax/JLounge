@@ -1,6 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import type { AddressInfo } from 'node:net';
 import type { Server } from 'node:http';
-import { afterEach, describe, expect, it } from 'vitest';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createApp } from './app.ts';
 import { scheduleRouter } from './modules/schedule/index.ts';
 import { createGuest, createLocalAuth } from './shared/auth/localAuth.ts';
@@ -21,7 +24,7 @@ const body = async (res: Response) => (await res.json()) as Body;
 
 let server: Server | null = null;
 
-async function start(options: { checks?: Record<string, HealthCheck>; shuttingDown?: boolean } = {}) {
+async function start(options: { checks?: Record<string, HealthCheck>; shuttingDown?: boolean; webDir?: string } = {}) {
   const db = {} as Queryable; // 이 테스트에서는 DB를 쓰는 경로를 부르지 않는다
   const app = createApp({
     auth,
@@ -30,6 +33,7 @@ async function start(options: { checks?: Record<string, HealthCheck>; shuttingDo
     isShuttingDown: () => options.shuttingDown ?? false,
     logger: createLogger('error'),
     schedule: scheduleRouter({ auth, db }),
+    webDir: options.webDir,
   });
   server = app.listen(0);
   await new Promise((resolve) => server!.once('listening', resolve));
@@ -110,6 +114,43 @@ describe('캠퍼스 플래너 /api/schedule (로그인한 회원만)', () => {
     });
     expect(res.status).toBe(200);
     expect((await body(res)).data.instance).toBeTruthy();
+  });
+});
+
+describe('화면 파일 함께 내보내기 (WEB_DIST_DIR)', () => {
+  let webDir = '';
+  beforeAll(() => {
+    webDir = mkdtempSync(path.join(tmpdir(), 'lounge-web-'));
+    mkdirSync(path.join(webDir, 'assets'));
+    writeFileSync(path.join(webDir, 'index.html'), '<!doctype html><title>라운지</title>');
+    writeFileSync(path.join(webDir, 'assets', 'app-abc123.js'), 'console.log(1)');
+  });
+  afterAll(() => rmSync(webDir, { recursive: true, force: true }));
+
+  it('화면 주소(/, 초대 링크)는 index.html, 캐시하지 않음', async () => {
+    const base = await start({ webDir });
+    for (const page of ['/', '/room/ABC123']) {
+      const res = await fetch(base + page);
+      expect(res.status).toBe(200);
+      expect(res.headers.get('cache-control')).toBe('no-cache');
+      expect(await res.text()).toContain('라운지');
+    }
+  });
+
+  it('빌드 파일은 오래 캐시, 없는 파일은 404', async () => {
+    const base = await start({ webDir });
+    const res = await fetch(`${base}/assets/app-abc123.js`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get('cache-control')).toContain('immutable');
+    expect((await fetch(`${base}/assets/old.js`)).status).toBe(404);
+  });
+
+  it('API·상태 확인은 그대로 (없는 API는 JSON 404)', async () => {
+    const base = await start({ webDir });
+    expect((await fetch(`${base}/health`)).status).toBe(200);
+    const res = await fetch(`${base}/api/nothing`);
+    expect(res.status).toBe(404);
+    expect((await body(res)).error.code).toBe('NOT_FOUND');
   });
 });
 

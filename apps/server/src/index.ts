@@ -49,7 +49,9 @@ const app = createApp({
   logger,
   lounge,
   schedule: scheduleRouter({ auth, db, instanceName: config.INSTANCE_NAME }),
+  webDir: config.WEB_DIST_DIR,
 });
+if (config.WEB_DIST_DIR) logger.info('화면 파일도 함께 내보냄', { dir: config.WEB_DIST_DIR });
 
 const httpServer = createServer(app);
 const io = createSocketServer({ httpServer, auth, redis, corsOrigins: config.CORS_ORIGINS, logger });
