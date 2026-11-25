@@ -138,29 +138,76 @@
   display: flex;
   flex: 1;
   flex-direction: column;
-  gap: 2px;
+  gap: 0;
+  border-top: 4px solid var(--color-line);
   min-height: 0;
 }
 
+/*
+ * 층 = 복도 하나: 천장 형광등 → 크림색 벽 → 민트빛 징두리 벽(몰딩 선) → 걸레받이 → 체크무늬 바닥 타일.
+ * 문은 바닥 타일 위에 딱 서고, 층과 층 사이는 굵은 슬래브 선 하나로 나눈다.
+ */
+.floors {
+  --tile: 8px;
+  --wall: var(--color-surface);
+  --wall-low: color-mix(in srgb, var(--color-sofa) 28%, var(--color-surface));
+  --tile-a: color-mix(in srgb, var(--color-line) 14%, var(--color-bg));
+  --tile-b: var(--color-bg);
+}
+
 .floor {
+  position: relative;
   display: flex;
   flex: 1;
   align-items: stretch;
   gap: var(--space-3);
   min-height: 0;
-  border-bottom: var(--pixel) solid var(--color-line);
+  padding: 5px var(--space-2) var(--tile) 0;
+  border-bottom: 4px solid var(--color-line);
+  background:
+    /* 바닥 타일 (체크무늬 두 줄) */
+    repeating-linear-gradient(90deg, var(--tile-a) 0 8px, var(--tile-b) 8px 16px) left bottom 4px / 100% 4px no-repeat,
+    repeating-linear-gradient(90deg, var(--tile-b) 0 8px, var(--tile-a) 8px 16px) left bottom / 100% 4px no-repeat,
+    /* 걸레받이 */ linear-gradient(var(--color-line), var(--color-line)) left bottom var(--tile) / 100% 3px no-repeat,
+    /* 징두리 몰딩 선 */ linear-gradient(var(--color-line), var(--color-line)) left bottom 28% / 100% 2px no-repeat,
+    /* 아래쪽 벽 */ linear-gradient(var(--wall-low), var(--wall-low)) left bottom / 100% 28% no-repeat,
+    var(--wall);
 }
 
+/* 천장 형광등: 띄엄띄엄 */
+.floor::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 0;
+  left: 0;
+  height: 4px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 48px,
+    var(--color-line) 48px 50px,
+    color-mix(in srgb, var(--color-gold) 45%, var(--color-surface)) 50px 82px,
+    var(--color-line) 82px 84px,
+    transparent 84px 140px
+  );
+}
+
+/* 층 번호: 벽에 붙은 명판 */
 .floor-label {
   display: grid;
   flex: none;
+  align-self: center;
   place-items: center;
-  width: 32px;
-  color: var(--color-text-muted);
+  width: 34px;
+  height: 22px;
+  margin-left: var(--space-2);
+  border: 2px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-text);
   font-family: var(--font-pixel);
-  font-size: var(--text-14);
+  font-size: var(--text-12);
+  font-weight: 700;
 }
-
 .floor-rooms {
   display: grid;
   flex: 1;
@@ -178,14 +225,14 @@
   container-type: size;
 }
 
-/* 강의실 카드: 왼쪽 문 + 오른쪽 명판. 칸 높이를 꽉 채운다 */
+/* 강의실 카드: 왼쪽 문(바닥에 딱 서게 아래 맞춤) + 오른쪽 벽의 명판. 칸 높이를 꽉 채운다 */
 .window-card {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
   width: 100%;
   height: 100%;
-  padding: 2px 0 0;
+  padding: 0;
   border: 0;
   border-radius: var(--radius-window);
   background: none;
@@ -198,9 +245,11 @@
   background: var(--color-light);
 }
 
-/* 문 옆 명판: 호실 · 방 이름 · 인원 */
+/* 문 옆 벽에 붙은 명판: 호실 · 방 이름 · 인원 (위쪽 벽, 몰딩 선 위) */
 .room-text {
   display: flex;
+  align-self: flex-start;
+  padding-top: 2px;
   flex: 1;
   flex-direction: column;
   align-items: flex-start;
@@ -260,7 +309,7 @@
   position: relative;
   display: block;
   /* 문 높이 = 층 높이 (위아래 조금 띄움), 너비 = 높이의 0.6배 (칸 너비의 42%를 넘지 않게) */
-  --door-h: min(calc(100cqh - 4px), calc(100cqw * 0.42 / 0.6), 170px);
+  --door-h: min(calc(100cqh - 2px), calc(100cqw * 0.42 / 0.6), 170px);
   flex: none;
   width: calc(var(--door-h) * 0.6);
   height: var(--door-h);
