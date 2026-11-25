@@ -57,11 +57,21 @@ const schema = z.object({
 
 export type Config = z.infer<typeof schema>;
 
+/** .env.example 에 들어 있는 개발용 키 (공개돼 있으니 운영에서는 쓰면 안 된다) */
+export const DEV_AUTH_SECRET = 'local-dev-only-auth-secret-change-in-production';
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   const parsed = schema.safeParse(env);
   if (!parsed.success) {
     const problems = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`환경 변수 설정이 잘못됐어요. .env.example을 참고해 .env를 만들어주세요.\n${problems}`);
+  }
+  // 공개된 개발용 키로 운영 서버를 켜면 누구나 로그인 토큰을 위조할 수 있다 → 켜지 않는다
+  if (parsed.data.NODE_ENV === 'production' && parsed.data.AUTH_SECRET === DEV_AUTH_SECRET) {
+    throw new Error(
+      '운영(NODE_ENV=production)에서는 개발용 AUTH_SECRET 을 쓸 수 없어요. 32자 이상 무작위 값을 넣어주세요.\n' +
+        `  node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`,
+    );
   }
   return parsed.data;
 }

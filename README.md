@@ -13,17 +13,21 @@ Cloud Computing Course Team Project — 전북대학교 휴식 라운지
 
 ## 로컬에서 실행하기
 
-준비물: Node 24, Docker Desktop.
+준비물: Git, Node 24, Docker Desktop (켜 두기).
 
 ```bash
-cp .env.example .env          # 값 채우기: AUTH_SECRET(32자 이상), POSTGRES_PASSWORD, DATABASE_URL 의 비밀번호
-npm install
+git clone https://github.com/hyraxbyerax/JLounge.git
+cd JLounge
+npm install                   # 설정 파일 .env 도 이때 자동으로 만들어진다 (.env.example 의 내 컴퓨터용 기본값)
 docker compose up -d          # Valkey(Redis) + PostgreSQL
 npm run db:migrate            # 테이블 만들기 (처음 한 번, 마이그레이션이 추가될 때마다)
 npm run dev                   # 서버(3000) + 화면(5173)
 ```
 
 http://localhost:5173 으로 접속한다. 개발 중에는 화면 서버가 `/api`, `/socket.io`, `/health`를 3000번 서버로 넘겨준다.
+
+- 설정을 직접 채울 필요는 없다. 유튜브 검색을 쓰려면 `.env`의 `YOUTUBE_API_KEY`만 채운다 (비우면 예시 곡만 검색).
+- `.env.example`의 비밀번호·`AUTH_SECRET`은 각자 컴퓨터 안에서만 쓰는 개발용이다. 운영(`NODE_ENV=production`)에서 개발용 `AUTH_SECRET`을 그대로 쓰면 서버가 켜지지 않는다.
 
 > Windows PowerShell에서 `npm` 실행이 막히면 `npm.cmd`로 실행한다.
 
@@ -133,7 +137,7 @@ ALB ──▶ ECS Fargate 서버 2대 (화면 파일 + API + 실시간) ──�
 8. **여유 있으면**: Cognito, Secrets Manager, 알람
 9. **끝나면 삭제**: ECS 서비스(작업 0개) → ALB → ElastiCache → RDS → ECR 이미지 순서. 남겨 두면 예산이 계속 줄어든다
 
-> 환경 변수 (ECS 작업 정의): `NODE_ENV=production`, `PORT=3000`, `TRUST_PROXY=true`, `REDIS_URL=redis://<ElastiCache 기본 엔드포인트>:6379`, `DATABASE_URL=postgres://<사용자>:<비밀번호>@<RDS 엔드포인트>:5432/<DB 이름>`, `AUTH_SECRET=<32자 이상, 두 서버 같은 값>`, `YOUTUBE_API_KEY=<선택>`. ElastiCache에서 전송 중 암호화를 켰다면 `rediss://`로 쓴다.
+> 환경 변수 (ECS 작업 정의): `NODE_ENV=production`, `PORT=3000`, `TRUST_PROXY=true`, `REDIS_URL=redis://<ElastiCache 기본 엔드포인트>:6379`, `DATABASE_URL=postgres://<사용자>:<비밀번호>@<RDS 엔드포인트>:5432/<DB 이름>`, `AUTH_SECRET=<32자 이상 무작위, 두 서버 같은 값. .env.example 의 개발용 값을 쓰면 서버가 켜지지 않는다>`, `YOUTUBE_API_KEY=<선택>`. ElastiCache에서 전송 중 암호화를 켰다면 `rediss://`로 쓴다.
 
 ### 세부 사항
 

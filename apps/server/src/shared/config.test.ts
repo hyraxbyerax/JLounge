@@ -1,5 +1,6 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { loadConfig } from './config.ts';
+import { DEV_AUTH_SECRET, loadConfig } from './config.ts';
 
 const base = {
   REDIS_URL: 'redis://localhost:6379',
@@ -19,6 +20,24 @@ describe('설정', () => {
       'http://a.com',
       'http://b.com',
     ]);
+  });
+
+  it('.env.example 의 개발용 키는 개발에서는 되고, 운영에서는 막는다', () => {
+    expect(loadConfig({ ...base, AUTH_SECRET: DEV_AUTH_SECRET }).AUTH_SECRET).toBe(DEV_AUTH_SECRET);
+    expect(() => loadConfig({ ...base, AUTH_SECRET: DEV_AUTH_SECRET, NODE_ENV: 'production' })).toThrow(/운영/);
+    expect(loadConfig({ ...base, NODE_ENV: 'production' }).NODE_ENV).toBe('production');
+  });
+
+  it('.env.example 의 기본값만으로 설정이 통과한다 (받자마자 켜지게)', () => {
+    const example = Object.fromEntries(
+      readFileSync(new URL('../../../../.env.example', import.meta.url), 'utf8')
+        .split('\n')
+        .filter((line) => /^[A-Z_]+=/.test(line))
+        .map((line) => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)]),
+    );
+    expect(example.AUTH_SECRET).toBe(DEV_AUTH_SECRET);
+    expect(() => loadConfig(example)).not.toThrow();
+    expect(example.DATABASE_URL).toContain(`:${example.POSTGRES_PASSWORD}@`);
   });
 
   it('필수 값이 없거나 짧으면 알아보기 쉬운 오류를 낸다', () => {

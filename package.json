@@ -10,6 +10,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
+    "postinstall": "node -e \"import('./scripts/setup-env.mjs').catch(() => {})\"",
     "dev": "node scripts/dev.mjs",
     "dev:web": "npm run dev -w @lounge/web",
     "build": "npm run build --workspaces --if-present",
