@@ -40,25 +40,13 @@
  * 간판: 굵은 픽셀 글꼴(갈무리11 Bold)을 기본 크기(12px)의 6배로.
  * 크림색 픽셀 테두리를 둘러 점무늬 배경 위에서도 또렷하게, 그 뒤에 분홍 그림자.
  */
+/* 메인 간판: 공통 JLounge 로고(.jlounge-logo, pixel.css)를 가장 크게 */
 .home-title {
+  --logo-outline: 3px;
+  --logo-shadow: 7px;
   position: relative;
   margin-bottom: var(--space-6);
-  color: var(--color-text);
-  font-family: var(--font-pixel);
   font-size: 72px;
-  font-weight: 700;
-  line-height: 1;
-  letter-spacing: 0.04em;
-  text-shadow:
-    3px 0 0 var(--color-surface),
-    -3px 0 0 var(--color-surface),
-    0 3px 0 var(--color-surface),
-    0 -3px 0 var(--color-surface),
-    3px 3px 0 var(--color-surface),
-    -3px -3px 0 var(--color-surface),
-    3px -3px 0 var(--color-surface),
-    -3px 3px 0 var(--color-surface),
-    7px 7px 0 var(--color-light);
 }
 
 /* 간판 양옆 작은 픽셀 반짝이 (십자 모양) */

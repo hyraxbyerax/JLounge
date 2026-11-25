@@ -128,7 +128,7 @@ export function PlannerPage({ user, onLogout, sidebar, onBack }: PlannerPageProp
         {/* 사이트 간판: 누르면 첫 화면으로 (라운지·플래너는 첫 화면에서만 고른다) */}
         <h1>
           {onBack ? (
-            <button type="button" className="brand-link" onClick={onBack} title="첫 화면으로">
+            <button type="button" className="brand-link jlounge-logo is-small" onClick={onBack} title="첫 화면으로">
               JLounge
             </button>
           ) : (

@@ -25,7 +25,6 @@
   border: 0;
   border-radius: var(--radius-control);
   background: none;
-  font: inherit;
   cursor: pointer;
 }
 
@@ -312,10 +311,10 @@
 /* 문에 난 세로 유리창 */
 .window-glass {
   position: absolute;
-  top: 12%;
+  top: 10%;
   left: 50%;
-  width: 40%;
-  height: 36%;
+  width: 50%;
+  height: 40%;
   border: 3px solid var(--color-line);
   background: var(--glass-off);
   transform: translateX(-50%);
@@ -333,21 +332,98 @@
   --lit: 1;
 }
 
-/* 열린 방: 유리창에 불 (사람이 많을수록 진하게) + 픽셀 반짝임 */
-.is-open .window-glass,
-.is-full .window-glass {
-  background:
-    linear-gradient(var(--color-surface), var(--color-surface)) 20% 12% / 6px 6px no-repeat,
-    color-mix(in srgb, var(--color-light) calc(var(--lit) * 100%), var(--glass-off));
+/*
+ * 불 켜진 강의실: 문 전체가 번쩍번쩍 빛난다 (2026-11-25 사용자 요청: 분홍 유리창은 잘 안 보여서).
+ * 유리창은 밝은 불빛, 문 둘레에 빛 테두리와 후광이 픽셀처럼 딱딱 끊어지며 깜빡인다. 게임 중이면 민트빛.
+ */
+.window-grid {
+  --light-warm: var(--color-gold);
+  --glow: var(--color-gold);
 }
 
-/* 게임 중: 분홍·민트 반반 */
+.is-game {
+  --glow: var(--color-sofa);
+}
+
+.is-open .window-glass,
+.is-full .window-glass,
 .is-game .window-glass {
   background:
-    linear-gradient(var(--color-surface), var(--color-surface)) 20% 12% / 6px 6px no-repeat,
-    linear-gradient(160deg, var(--color-light) 50%, var(--color-sofa) 50%);
+    linear-gradient(var(--color-surface), var(--color-surface)) 20% 12% / 5px 5px no-repeat,
+    var(--light-warm);
 }
 
+.is-game .window-glass {
+  background:
+    linear-gradient(var(--color-surface), var(--color-surface)) 20% 12% / 5px 5px no-repeat,
+    linear-gradient(var(--light-warm) 50%, var(--color-sofa) 50%);
+}
+
+.is-open .window,
+.is-full .window,
+.is-game .window {
+  background: color-mix(in srgb, var(--glow) 35%, var(--door-wood));
+  animation: door-flash 1.2s steps(1) infinite;
+}
+
+/* 가득 찬 방은 천천히 */
+.is-full .window {
+  animation-duration: 2.4s;
+}
+
+@keyframes door-flash {
+  0% {
+    box-shadow:
+      var(--pixel-shadow-lg),
+      0 0 0 3px var(--glow),
+      0 0 24px 10px color-mix(in srgb, var(--glow) 85%, transparent);
+  }
+
+  50% {
+    box-shadow:
+      var(--pixel-shadow-lg),
+      0 0 0 3px color-mix(in srgb, var(--glow) 80%, transparent),
+      0 0 10px 4px color-mix(in srgb, var(--glow) 55%, transparent);
+  }
+}
+
+/* 문 옆 반짝이 (십자 픽셀), 빛과 엇갈려 깜빡 */
+.window-card {
+  position: relative;
+}
+
+.is-open::before,
+.is-game::before {
+  content: '';
+  position: absolute;
+  top: 4px;
+  left: -6px;
+  z-index: 3;
+  width: 4px;
+  height: 4px;
+  background: var(--glow);
+  box-shadow:
+    4px 0 0 var(--glow),
+    -4px 0 0 var(--glow),
+    0 4px 0 var(--glow),
+    0 -4px 0 var(--glow);
+  animation: sparkle 1.2s steps(1) infinite;
+}
+
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 불 켜진 강의실 명판 글자는 또렷하게 */
+.window-card:not(.is-dark) .room-plate {
+  background: var(--light-warm);
+}
 /* 잠긴 방: 블라인드 */
 .is-locked .window-glass {
   background: repeating-linear-gradient(to bottom, var(--color-surface-2) 0 5px, var(--color-surface) 5px 10px);

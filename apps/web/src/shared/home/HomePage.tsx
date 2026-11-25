@@ -37,7 +37,7 @@ export function HomePage({ onLounge, onSchedule, onLogin, onFriends }: Props) {
         )}
       </div>
 
-      <h1 className="home-title">
+      <h1 className="home-title jlounge-logo">
         JLounge
         <span className="sr-only"> 전북대학교 휴식 라운지</span>
       </h1>

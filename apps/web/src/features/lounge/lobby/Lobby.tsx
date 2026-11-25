@@ -52,8 +52,8 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
   return (
     <div className="lobby soft-light">
       <header className="lobby-header">
-        <h1 className="lobby-title sign">
-          <button type="button" className="title-link" onClick={onHome}>
+        <h1 className="lobby-title">
+          <button type="button" className="title-link jlounge-logo is-small" onClick={onHome} title="첫 화면으로">
             JLounge
           </button>
         </h1>

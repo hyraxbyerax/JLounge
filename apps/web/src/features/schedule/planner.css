@@ -228,16 +228,11 @@
   .topbar h1 {
     margin-right: auto;
   }
-  /* 사이트 간판 (로비 제목과 같은 모양). 누르면 첫 화면 */
+  /* 사이트 간판: 공통 JLounge 로고 (.jlounge-logo, pixel.css). 누르면 첫 화면 */
   .brand-link {
     padding: 0;
     border: 0;
     background: none;
-    color: var(--text);
-    font-family: var(--font-pixel);
-    font-size: 24px;
-    font-weight: 700;
-    line-height: 1;
     cursor: pointer;
   }
   .tabs {

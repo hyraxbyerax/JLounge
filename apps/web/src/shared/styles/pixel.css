@@ -81,10 +81,47 @@
   font-size: 24px;
 }
 
-/* 로비 왼쪽 위 JLounge 간판 (플래너 간판과 같은 굵은 픽셀) */
-.lobby-title {
+/*
+ * JLounge 로고: 굵은 픽셀 글꼴 + 크림색 픽셀 테두리 + 분홍 그림자.
+ * 메인 간판(72px)·로비·플래너 왼쪽 위(36px)가 같은 모양, 크기에 맞춰 테두리·그림자 두께만 바꾼다.
+ */
+.jlounge-logo {
+  --logo-outline: 2px;
+  --logo-shadow: 4px;
+  color: var(--color-text);
   font-family: var(--font-pixel);
   font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  text-shadow:
+    var(--logo-outline) 0 0 var(--color-surface),
+    calc(var(--logo-outline) * -1) 0 0 var(--color-surface),
+    0 var(--logo-outline) 0 var(--color-surface),
+    0 calc(var(--logo-outline) * -1) 0 var(--color-surface),
+    var(--logo-outline) var(--logo-outline) 0 var(--color-surface),
+    calc(var(--logo-outline) * -1) calc(var(--logo-outline) * -1) 0 var(--color-surface),
+    var(--logo-outline) calc(var(--logo-outline) * -1) 0 var(--color-surface),
+    calc(var(--logo-outline) * -1) var(--logo-outline) 0 var(--color-surface),
+    var(--logo-shadow) var(--logo-shadow) 0 var(--color-light);
+}
+
+/* 로비·플래너 왼쪽 위 작은 로고 (누르면 첫 화면) */
+.jlounge-logo.is-small {
+  font-size: 36px;
+}
+
+/* 플래너는 자체 CSS가 버튼 글꼴을 덮어써서(.campus-planner button { font: inherit }) 한 번 더 지정 */
+.campus-planner .jlounge-logo {
+  font-family: var(--font-pixel);
+  font-weight: 700;
+  line-height: 1;
+}
+
+@media (max-width: 767px) {
+  .jlounge-logo.is-small {
+    --logo-shadow: 3px;
+    font-size: 24px;
+  }
 }
 
 .bubble {
