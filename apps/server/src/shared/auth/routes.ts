@@ -4,7 +4,8 @@ import type { Queryable } from '../db/pool.ts';
 import { AppError } from '../http/errors.ts';
 import { requiredText, validate } from '../http/validate.ts';
 import type { AuthProvider, TokenIssuer } from './AuthProvider.ts';
-import { createGuest } from './localAuth.ts';
+import { createMemoryGuestNames, pickGuestName, type GuestNames } from './guestNames.ts';
+import { createGuest, GUEST_NAME } from './localAuth.ts';
 import { currentUser, requireAuth, requireMember } from './middleware.ts';
 import { hashPassword, verifyPassword } from './password.ts';
 import { createMember, findMemberByEmail, findMemberById, setPresenceVisibility, toMemberDto } from './users.ts';
@@ -20,7 +21,9 @@ export const signupInput = z
       .string({ error: '비밀번호를 입력해주세요.' })
       .min(8, '비밀번호는 8자 이상이어야 합니다.')
       .max(128, '비밀번호는 128자 이하로 입력해주세요.'),
-    nickname: requiredText('닉네임', 20),
+    nickname: requiredText('닉네임', 20).refine((v) => !GUEST_NAME.test(v), {
+      message: 'Guest+숫자 모양 닉네임은 게스트 전용이에요. 다른 닉네임을 써주세요.',
+    }),
   })
   .strict();
 
@@ -40,11 +43,17 @@ const dummyHash = hashPassword('dummy-password-for-timing');
  * - POST /signup, /login: 이메일+비밀번호 회원. 나중에 Cognito로 바꾸면 브라우저가 Cognito와 직접 통신하고 이 둘은 없어진다
  * - GET /me: 지금 토큰의 사용자 (회원이면 DB에서 다시 읽는다)
  */
-export function usersRouter(auth: AuthProvider & TokenIssuer, db: Queryable): Router {
+export function usersRouter(
+  auth: AuthProvider & TokenIssuer,
+  db: Queryable,
+  guestNames: GuestNames = createMemoryGuestNames(),
+): Router {
   const router = Router();
 
+  // 게스트 이름은 Guest + 다섯 자리 숫자, 지금 쓰이는 이름과 겹치지 않게 잡아서 준다
   router.post('/guest', async (_req, res) => {
-    const user = createGuest();
+    const blank = createGuest('');
+    const user = { ...blank, nickname: await pickGuestName(guestNames, blank.userId) };
     res.status(201).json({ data: { token: await auth.issue(user), user } });
   });
 

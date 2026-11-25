@@ -72,6 +72,7 @@ describe('POST /api/users/guest', () => {
     expect(res.status).toBe(201);
     const { data } = await body(res);
     expect(data.user.userId).toMatch(/^guest_/);
+    expect(data.user.nickname).toMatch(/^Guest\d{5}$/);
     expect(await auth.verify(data.token)).toEqual(data.user);
   });
 });
@@ -91,6 +92,19 @@ describe('POST /api/users/signup', () => {
       password: '비밀번호는 8자 이상이어야 합니다.',
       nickname: '닉네임을 입력해주세요.',
     });
+  });
+});
+
+describe('게스트 이름 모양은 회원 닉네임으로 못 쓴다', () => {
+  it('회원가입 닉네임이 Guest+다섯 자리 숫자면 거절 (DB까지 가지 않는다)', async () => {
+    const res = await fetch(`${await start()}/api/users/signup`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ email: 'a@example.com', password: 'password123', nickname: 'Guest12345' }),
+    });
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: { fields: Record<string, string> } };
+    expect(json.error.fields.nickname).toContain('게스트 전용');
   });
 });
 

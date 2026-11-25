@@ -7,6 +7,7 @@ import { withSearchCache } from './modules/lounge/music/search.ts';
 import { createYouTubeSearch } from './modules/lounge/music/youtubeSearch.ts';
 import { loungeRouter } from './modules/lounge/routes.ts';
 import { scheduleRouter } from './modules/schedule/index.ts';
+import { createRedisGuestNames } from './shared/auth/guestNames.ts';
 import { createLocalAuth } from './shared/auth/localAuth.ts';
 import { loadConfig } from './shared/config.ts';
 import { createPool } from './shared/db/pool.ts';
@@ -50,6 +51,7 @@ const app = createApp({
   lounge,
   schedule: scheduleRouter({ auth, db, instanceName: config.INSTANCE_NAME }),
   webDir: config.WEB_DIST_DIR,
+  guestNames: createRedisGuestNames(redis.client),
 });
 if (config.WEB_DIST_DIR) logger.info('화면 파일도 함께 내보냄', { dir: config.WEB_DIST_DIR });
 

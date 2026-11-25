@@ -10,6 +10,8 @@ import '../friends/friends-sidebar.css';
 
 type Props = {
   roomCode: string;
+  /** 방 코드를 글자로 보여줄지 (방장에게만) */
+  showCode: boolean;
   /** 지금 방에 있는 사람 (이미 있는 친구는 초대 대신 "이 방에 있어요") */
   memberIds: ReadonlySet<string>;
   onClose: () => void;
@@ -21,7 +23,7 @@ type Sent = Record<string, 'sending' | 'sent'>;
  * [초대] 창: 친구를 한 명씩 이 방에 초대하고, 아래 [링크 복사하기]로 초대 링크도 줄 수 있다.
  * 친구 초대는 접속 중인 친구에게만 간다 (받은 친구 화면 위에 "들어가기" 알림, 비밀번호 없이 입장).
  */
-export function InviteDialog({ roomCode, memberIds, onClose }: Props) {
+export function InviteDialog({ roomCode, showCode, memberIds, onClose }: Props) {
   const member = useMember();
   const { overview } = useFriends();
   const [sent, setSent] = useState<Sent>({});
@@ -112,7 +114,13 @@ export function InviteDialog({ roomCode, memberIds, onClose }: Props) {
 
         <div className="invite-link">
           <span className="form-hint">
-            친구가 아니어도 링크나 방 코드 <strong className="invite-code">{roomCode}</strong>로 들어올 수 있어요
+            {showCode ? (
+              <>
+                친구가 아니어도 링크나 방 코드 <strong className="invite-code">{roomCode}</strong>로 들어올 수 있어요
+              </>
+            ) : (
+              '친구가 아니어도 링크로 들어올 수 있어요'
+            )}
           </span>
           <div className="modal-actions">
             <button type="button" className="btn btn-ghost" onClick={onClose}>

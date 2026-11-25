@@ -221,16 +221,21 @@ export function Room({
     <header className="room-header">
       <h1 className="room-name sign">{room.name}</h1>
       <p className="room-info">
-        <button
-          type="button"
-          className="room-code"
-          title="눌러서 방 코드 복사"
-          aria-label={`방 코드 ${room.code}, 눌러서 복사`}
-          onClick={() => void copyCode()}
-        >
-          코드 <strong>{room.code}</strong>
-        </button>
-        {' · '}
+        {/* 방 코드는 방장에게만 보인다 (다른 사람은 [초대]의 링크로 부른다) */}
+        {isHost && (
+          <>
+            <button
+              type="button"
+              className="room-code"
+              title="눌러서 방 코드 복사"
+              aria-label={`방 코드 ${room.code}, 눌러서 복사`}
+              onClick={() => void copyCode()}
+            >
+              코드 <strong>{room.code}</strong>
+            </button>
+            {' · '}
+          </>
+        )}
         {!isMobile && host && <>👑 {host.nickname} · </>}
         {members.length}/{room.maxMembers}
         {badges.length > 0 && <> · {badges.join(' · ')}</>}
@@ -491,6 +496,7 @@ export function Room({
       {dialog === 'invite' && (
         <InviteDialog
           roomCode={room.code}
+          showCode={isHost}
           memberIds={new Set(members.map((m) => m.id))}
           onClose={() => setDialog(null)}
         />
