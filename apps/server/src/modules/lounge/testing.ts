@@ -66,8 +66,8 @@ export function createHarness(
       app.use('/api/lounge/friends', lounge.friendsRouter);
       app.use(errorHandler(logger));
       stop = lounge.stop;
-      await new Promise<void>((r) => http.listen(0, r));
-      base = `http://localhost:${(http.address() as AddressInfo).port}`;
+      await new Promise<void>((r) => http.listen(0, '127.0.0.1', r));
+      base = `http://127.0.0.1:${(http.address() as AddressInfo).port}`;
     },
 
     /** 이 사람의 토큰으로 HTTP 요청 (친구 API) */

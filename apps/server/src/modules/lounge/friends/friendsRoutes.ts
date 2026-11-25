@@ -3,9 +3,12 @@
  * 요청이 오면 상대에게 바로 알리고(접속 중이면), 아니면 다음에 목록을 열 때 보인다.
  */
 import {
+  DM_RATE,
+  dmSendInput,
   FRIEND_REQUESTS_PER_DAY,
   friendRequestInput,
   OFFLINE,
+  type DirectMessage,
   type FriendEntry,
   type FriendsOverview,
 } from '@lounge/shared';
@@ -18,16 +21,25 @@ import { AppError } from '../../../shared/http/errors.ts';
 import { validate } from '../../../shared/http/validate.ts';
 import type { Counter } from '../../../shared/rateLimit.ts';
 import { filterPresence, type ActivityStore } from './activity.ts';
+import * as dm from './dmRepo.ts';
 import * as repo from './friendsRepo.ts';
 
 export type Notify = {
   request: (to: string, from: { userId: string; nickname: string }) => void;
   changed: (to: string) => void;
+  /** 1:1 메시지를 받는 사람과 보낸 사람(다른 탭)에게 */
+  dm: (message: DirectMessage) => void;
 };
 
 type Deps = { auth: AuthProvider; db: Pool; activity: ActivityStore; counter: Counter; notify: Notify };
 
 const userParam = z.object({ userId: z.string().min(1).max(100) });
+const beforeQuery = z.object({
+  before: z
+    .string()
+    .regex(/^\d{1,18}$/)
+    .optional(),
+});
 
 const REQUEST_ERRORS: Partial<Record<repo.RequestResult, [string, string]>> = {
   'already-friend': ['FRIEND_ALREADY', '이미 친구예요'],
@@ -41,10 +53,15 @@ const REQUEST_ERRORS: Partial<Record<repo.RequestResult, [string, string]>> = {
 export async function overview(db: Pool, activity: ActivityStore, me: string): Promise<FriendsOverview> {
   const lists = await repo.lists(db, me);
   const ids = lists.friends.map((f) => f.userId);
-  const [raw, visibility] = await Promise.all([activity.get(ids), repo.visibilities(db, ids)]);
+  const [raw, visibility, unread] = await Promise.all([
+    activity.get(ids),
+    repo.visibilities(db, ids),
+    dm.unreadCounts(db, me),
+  ]);
   const friends: FriendEntry[] = lists.friends.map((f) => ({
     ...f,
     presence: visibility.has(f.userId) ? filterPresence(raw.get(f.userId) ?? null, visibility.get(f.userId)!) : OFFLINE,
+    unread: unread.get(f.userId) ?? 0,
   }));
   // 접속 중인 친구가 먼저
   friends.sort((a, b) => Number(b.presence.online) - Number(a.presence.online));
@@ -142,6 +159,42 @@ export function friendsRouter({ auth, db, activity, counter, notify }: Deps): Ro
     const me = currentUser(res).userId;
     const { userId } = validate(userParam, req.params);
     await repo.unblock(db, me, userId);
+    res.status(204).end();
+  });
+
+  /* 친구끼리 1:1 대화 */
+
+  async function requireFriend(me: string, other: string) {
+    if ((await repo.relation(db, me, other)) !== 'friend') {
+      throw new AppError('DM_NOT_FRIEND', '친구에게만 메시지를 보낼 수 있어요', 403);
+    }
+  }
+
+  router.get('/:userId/messages', async (req, res) => {
+    const me = currentUser(res).userId;
+    const { userId } = validate(userParam, req.params);
+    const { before } = validate(beforeQuery, req.query);
+    await requireFriend(me, userId);
+    res.json({ data: await dm.history(db, me, userId, before) });
+  });
+
+  router.post('/:userId/messages', async (req, res) => {
+    const me = currentUser(res).userId;
+    const { userId } = validate(userParam, req.params);
+    const { text } = validate(dmSendInput, req.body);
+    await requireFriend(me, userId);
+    if ((await counter.hit(`user:${me}:dmrate`, DM_RATE.windowSec)) > DM_RATE.limit) {
+      throw new AppError('DM_TOO_FAST', '메시지를 너무 빨리 보내고 있어요. 잠시 후에 보내주세요', 429);
+    }
+    const message = await dm.send(db, me, userId, text);
+    notify.dm(message);
+    res.status(201).json({ data: message });
+  });
+
+  router.post('/:userId/read', async (req, res) => {
+    const me = currentUser(res).userId;
+    const { userId } = validate(userParam, req.params);
+    await dm.markRead(db, me, userId);
     res.status(204).end();
   });
 

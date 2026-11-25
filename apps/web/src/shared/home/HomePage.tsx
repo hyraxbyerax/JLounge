@@ -7,8 +7,8 @@ type Props = {
   onLounge: () => void;
   onSchedule: () => void;
   onLogin: () => void;
-  /** 친구 창 (로그인한 회원만) */
-  onFriends: () => void;
+  /** 친구 창 (좁은 화면에서만. 넓은 화면은 오른쪽 친구 현황판이 늘 보인다) */
+  onFriends?: () => void;
 };
 
 /** 사이트 첫 화면: 건물의 두 입구 (라운지 / 캠퍼스 플래너) + 오른쪽 위 로그인 */
@@ -21,9 +21,11 @@ export function HomePage({ onLounge, onSchedule, onLogin, onFriends }: Props) {
         {member ? (
           <>
             <span className="home-account-name">{member.nickname}님</span>
-            <button type="button" className="btn btn-ghost" onClick={onFriends}>
-              친구
-            </button>
+            {onFriends && (
+              <button type="button" className="btn btn-ghost" onClick={onFriends}>
+                친구
+              </button>
+            )}
             <button type="button" className="btn btn-ghost" onClick={signOut}>
               로그아웃
             </button>

@@ -146,7 +146,18 @@
 
 ## 9. 친구와 활동 상태 (로그인 사용자)
 
-친구 창은 메인 화면 오른쪽 위·로비·방 안의 [친구] 버튼으로 연다 (게스트에게는 안 보임). 캠퍼스 플래너 오른쪽 "친구" 칸에도 같은 친구 목록과 접속 여부가 나온다.
+**친구 현황판** (2026-11-25 사용자 요청: 리그 오브 레전드 친구 메신저처럼 오른쪽에 쫙 펼쳐서)
+- 넓은 화면(1100px 이상)에서는 메인·로비·방 안(게임 중 포함) **오른쪽에 늘 펼쳐 둔다.** [»]로 접으면 얇은 띠(접속 중인 친구 수·안 읽은 메시지 수)만 남고, 누르면 다시 펼친다 (브라우저마다 기억).
+- 좁은 화면(휴대폰 등)에서는 [친구] 버튼으로 오른쪽에서 밀려 나오는 서랍으로 연다.
+- 캠퍼스 플래너는 오른쪽 "친구" 칸에 같은 현황판을 넣는다.
+- 게스트에게는 "로그인하면 친구와 대화할 수 있어요" + [로그인] (방 안에서도 그 자리에서 로그인).
+- 목록: 맨 위 친구 추가(닉네임·친구 코드) → 받은 요청(수락·거절) → **접속 중** 친구 → 오프라인 친구. 친구마다 접속 점, 있는 방·활동, 안 읽은 메시지 수. 맨 아래 "내 친구 코드·설정"(코드 복사, 공개 범위, 보낸 요청, 차단 목록).
+
+**1:1 대화** (친구끼리만)
+- 친구를 누르면 현황판 안에서 대화가 열린다. 위에 [따라가기]·[이 방에 초대], [⋯]에 친구 끊기·차단.
+- 대화는 서버(PostgreSQL)에 저장해서 나중에 열어도 보인다. 최근 50개씩, 위로 "이전 대화 더 보기". 한 메시지 500자, 5초에 5개까지.
+- 새 메시지는 실시간으로 온다. 그 대화를 보고 있지 않으면 화면 아래 짧은 알림("💬 닉네임: 내용")과 친구 옆 안 읽은 수. 대화를 열면 읽음.
+- 친구가 아니면(끊기·차단 포함) 보내지도 읽지도 못한다.
 
 **친구 요청**
 - 닉네임 또는 친구 코드(8자리, 가입 때 발급, 친구 창에서 복사)로 요청. 같은 닉네임이 여러 명이면 "친구 코드로 요청해주세요"로 안내한다.
@@ -203,12 +214,14 @@
 | `presence:{userId}` | String(JSON) | 접속 중인 방(id·코드·이름), 활동 (`modules/lounge/friends/activity.ts`) | 60초 (신호마다 연장) |
 | `room:{roomId}:invite:{userId}` | String(JSON) | 친구 초대 (보낸 사람, 방장이 보냈는지). 입장할 때 꺼내 쓰고 지운다 | 10분 |
 | `user:{userId}:friendreq` | String | 오늘 보낸 친구 요청 수 | 하루 |
+| `user:{userId}:dmrate` | String | 1:1 대화 도배 방지 횟수 | 5초 |
 | `ytsearch:{query}` | String | 검색 결과 캐시 | 수 시간 |
 
 ## 부록 B. PostgreSQL 테이블 (`apps/server/src/shared/db/migrations/`)
 
 - `users` (공유): `user_id` text PK, `nickname` text, `friend_code` text unique, `presence_visibility` text (`all`/`online`/`hidden`), `email` text (소문자 기준 unique), `password_hash` text, `auth_sub` text unique (Cognito용), `created_at`·`updated_at` timestamptz
 - `schedules`, `timetable_entries` (캠퍼스 플래너): `user_id`로 `users` 참조, 사용자 삭제 시 함께 삭제
+- `direct_messages`: `id` (자동 증가), `sender_id`·`receiver_id` (`users` 참조, 사용자 삭제 시 함께 삭제), `body` (1~500자), `created_at`, `read_at` (받은 사람이 읽은 시각, 안 읽었으면 null)
 - `friendships`: `requester_id`, `addressee_id` (복합 PK, `users` 참조, 사용자 삭제 시 함께 삭제), `status` (`pending`: 요청 중 / `accepted`: 친구 / `blocked`: requester가 addressee를 차단), `created_at`·`updated_at`. 두 사람 사이에는 한 줄만 (순서 무관 unique 인덱스)
 - `game_results` [선택]: `id`, `user_id`, `game_type`, `score`, `rank`, `played_at`
 
@@ -222,5 +235,5 @@
 | 채팅 | `chat:send` | `chat:message` (사람·시스템 메시지 모두, 방마다 번호 `seq`) |
 | 음악 | `music:request`(영상 id만), `music:cancel`, `music:command`(방장 명령어), `music:seek`, `music:failed` | `music:state` (지금 곡 + 대기큐 전체) |
 | 게임 | `game:select`, `game:topic`(제시어 주제), `game:start`(한 판 더도), `game:quit`(`/endgame`), `game:stroke`, `game:undo`, `game:clear` (정답은 `chat:send`) | `game:state`(모두, 숨김 정보 뺌), `game:private`(받을 사람의 `user:{id}` 채널로만), `game:stroke`, `game:strokes` |
-| 친구·상태 | `presence:heartbeat`, `friend:invite` (요청·수락·차단은 HTTP `/api/lounge/friends`) | `presence:update`, `friend:request`, `friend:changed`, `friend:invited` (모두 받는 사람의 `user:{id}` 채널로) |
+| 친구·상태 | `presence:heartbeat`, `friend:invite` (요청·수락·차단은 HTTP `/api/lounge/friends`) | `presence:update`, `friend:request`, `friend:changed`, `friend:invited`, `dm:message` (모두 받는 사람의 `user:{id}` 채널로. `dm:message`는 보낸 사람의 다른 탭에도). 1:1 대화 보내기·불러오기·읽음은 HTTP `/api/lounge/friends/{userId}/messages`, `/read` |
 | 공통 | `time:sync` | `time:sync` |

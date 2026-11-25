@@ -30,7 +30,31 @@ export type FriendPresence = {
 export const OFFLINE: FriendPresence = { online: false, room: null, activity: null };
 
 export type UserBrief = { userId: string; nickname: string };
-export type FriendEntry = UserBrief & { presence: FriendPresence };
+export type FriendEntry = UserBrief & {
+  presence: FriendPresence;
+  /** 이 친구가 보냈는데 아직 안 읽은 1:1 메시지 수 */
+  unread: number;
+};
+
+/* 친구끼리 1:1 대화 (친구 현황판) */
+
+/** 한 번에 불러오는 대화 수 */
+export const DM_PAGE_SIZE = 50;
+/** 1:1 대화 도배 방지: 5초에 5개 (방 채팅과 같다) */
+export const DM_RATE = { limit: 5, windowSec: 5 } as const;
+
+export type DirectMessage = {
+  id: string;
+  from: string;
+  to: string;
+  text: string;
+  /** 보낸 시각 (ISO, UTC) */
+  at: string;
+};
+
+export const dmSendInput = z.object({
+  text: z.string().trim().min(1, '메시지를 입력해주세요').max(500, '메시지는 500자까지 보낼 수 있어요'),
+});
 
 export type FriendsOverview = {
   friends: FriendEntry[];

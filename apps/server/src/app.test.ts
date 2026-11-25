@@ -35,9 +35,9 @@ async function start(options: { checks?: Record<string, HealthCheck>; shuttingDo
     schedule: scheduleRouter({ auth, db }),
     webDir: options.webDir,
   });
-  server = app.listen(0);
+  server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server!.once('listening', resolve));
-  return `http://localhost:${(server.address() as AddressInfo).port}`;
+  return `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 }
 
 afterEach(() => {

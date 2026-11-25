@@ -1,7 +1,7 @@
 /*
  * 친구 API (/api/lounge/friends) 와 내 설정(/api/users/me). 로그인한 회원만.
  */
-import type { FriendRequestInput, FriendsOverview, PresenceVisibility } from '@lounge/shared';
+import type { DirectMessage, FriendRequestInput, FriendsOverview, PresenceVisibility } from '@lounge/shared';
 import { memberRequest } from '../../../shared/api/memberApi';
 
 const BASE = '/api/lounge/friends';
@@ -16,6 +16,15 @@ export const friendsApi = {
   remove: (userId: string) => memberRequest<void>('DELETE', `${BASE}/${encodeURIComponent(userId)}`),
   block: (userId: string) => memberRequest<{ message: string }>('POST', `${BASE}/${encodeURIComponent(userId)}/block`),
   unblock: (userId: string) => memberRequest<void>('DELETE', `${BASE}/${encodeURIComponent(userId)}/block`),
+  /** 1:1 대화: 최근 것 (before 를 주면 그보다 앞의 것) */
+  messages: (userId: string, before?: string) =>
+    memberRequest<DirectMessage[]>(
+      'GET',
+      `${BASE}/${encodeURIComponent(userId)}/messages${before ? `?before=${encodeURIComponent(before)}` : ''}`,
+    ),
+  sendMessage: (userId: string, text: string) =>
+    memberRequest<DirectMessage>('POST', `${BASE}/${encodeURIComponent(userId)}/messages`, { text }),
+  markRead: (userId: string) => memberRequest<void>('POST', `${BASE}/${encodeURIComponent(userId)}/read`),
   me: () => memberRequest<{ friendCode: string; presenceVisibility: PresenceVisibility }>('GET', '/api/users/me'),
   setVisibility: (presenceVisibility: PresenceVisibility) =>
     memberRequest<{ friendCode: string; presenceVisibility: PresenceVisibility }>('PATCH', '/api/users/me', {

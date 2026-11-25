@@ -1,0 +1,450 @@
+/*
+ * 친구 현황판 (오른쪽에 늘 펼쳐 두는 친구 목록 + 1:1 대화). 픽셀 디자인 토큰만 쓴다.
+ */
+.friends-side {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--color-surface);
+}
+
+.friends-side.is-docked {
+  width: 280px;
+  height: 100%;
+  border-left: var(--pixel) solid var(--color-line);
+}
+
+/* 좁은 화면: 오른쪽에서 밀려 나오는 서랍 */
+.friends-side.is-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 55;
+  width: min(340px, 100%);
+  border-left: var(--pixel) solid var(--color-line);
+  box-shadow: -5px 0 0 color-mix(in srgb, var(--color-line) 25%, transparent);
+  animation: fs-slide 160ms steps(4);
+}
+
+.fs-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 54;
+  border: 0;
+  background: color-mix(in srgb, var(--color-bg) 60%, transparent);
+}
+
+/* 캠퍼스 플래너 오른쪽 칸 안 */
+.friends-side.is-embedded {
+  height: min(640px, calc(100vh - 120px));
+  border: var(--pixel) solid var(--color-line);
+  box-shadow: var(--pixel-shadow);
+}
+
+@keyframes fs-slide {
+  from {
+    transform: translateX(40px);
+    opacity: 0;
+  }
+}
+
+.fs-head {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--pixel) solid var(--color-line);
+  background: var(--color-sofa);
+}
+
+.fs-title {
+  flex: 1;
+  font-size: var(--text-16);
+  font-weight: 400;
+}
+
+.fs-close,
+.fs-back {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 2px solid var(--color-line);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-family: var(--font-pixel);
+  font-size: var(--text-16);
+  cursor: pointer;
+}
+
+.fs-close:active,
+.fs-back:active {
+  transform: translate(2px, 2px);
+}
+
+.fs-body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-4);
+  min-height: 0;
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.fs-add {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.fs-add-input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-14);
+}
+
+.fs-note {
+  margin-top: calc(var(--space-2) * -1);
+  color: var(--color-online);
+  font-size: var(--text-12);
+}
+
+.fs-chat-actions + .fs-note,
+.fs-head + .fs-note {
+  margin: var(--space-2) var(--space-3) 0;
+}
+
+.fs-note.is-error {
+  color: var(--color-danger);
+}
+
+.fs-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fs-heading {
+  color: var(--color-text-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--text-12);
+  font-weight: 400;
+}
+
+.fs-heading-sub {
+  opacity: 0.8;
+}
+
+.fs-empty {
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+}
+
+.fs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.fs-friend {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-1) var(--space-2);
+  border: 2px solid transparent;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fs-friend:hover {
+  border-color: var(--color-line);
+  background: var(--color-surface-2);
+}
+
+.fs-list.is-offline .fs-name {
+  color: var(--color-text-muted);
+}
+
+.fs-friend-text,
+.fs-chat-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.fs-name {
+  overflow: hidden;
+  font-family: var(--font-pixel);
+  font-size: var(--text-14);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fs-status {
+  overflow: hidden;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 접속 점: 네모 픽셀. 접속 중은 점과 글자 둘 다로 알린다 */
+.fs-dot {
+  flex: none;
+  width: 10px;
+  height: 10px;
+  border: 2px solid var(--color-text-muted);
+}
+
+.fs-dot.is-online {
+  border-color: var(--color-online);
+  background: var(--color-online);
+}
+
+.fs-unread {
+  flex: none;
+  min-width: 22px;
+  padding: 0 var(--space-1);
+  border: 2px solid var(--color-line);
+  background: var(--color-light);
+  color: var(--color-light-text);
+  font-family: var(--font-pixel);
+  font-size: var(--text-12);
+  line-height: 18px;
+  text-align: center;
+}
+
+.fs-request {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+
+.fs-request .fs-name {
+  flex: 1;
+}
+
+.btn.fs-mini {
+  min-height: 32px;
+  padding: 0 var(--space-3);
+}
+
+.fs-more {
+  margin-top: auto;
+  padding-top: var(--space-2);
+  border-top: 2px dashed var(--color-surface-2);
+}
+
+.fs-more-toggle {
+  min-height: 36px;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--text-12);
+  text-align: left;
+  cursor: pointer;
+}
+
+.fs-more-body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.fs-code-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.fs-guest {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  font-size: var(--text-14);
+}
+
+/* 대화 화면 */
+.fs-chat-head {
+  background: var(--color-surface-2);
+}
+
+.fs-menu-wrap {
+  position: relative;
+}
+
+.fs-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  min-width: 120px;
+  border: 2px solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--pixel-shadow);
+}
+
+.fs-menu .btn-text {
+  justify-content: flex-start;
+  text-align: left;
+}
+
+.fs-danger {
+  color: var(--color-danger);
+}
+
+.fs-chat-actions {
+  display: flex;
+  flex: none;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) 0;
+}
+
+.fs-chat-actions .btn {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-12);
+}
+
+.dm {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.dm-list {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+  padding: var(--space-3);
+  overflow-y: auto;
+}
+
+.dm-older,
+.dm-empty {
+  align-self: center;
+  color: var(--color-text-muted);
+  font-size: var(--text-12);
+  text-align: center;
+}
+
+.dm-msg {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-1);
+  max-width: 100%;
+}
+
+.dm-msg.is-mine {
+  flex-direction: row-reverse;
+}
+
+.dm-bubble {
+  max-width: 85%;
+  padding: var(--space-1) var(--space-2);
+  border: 2px solid var(--color-line);
+  background: var(--color-surface-2);
+  box-shadow: 2px 2px 0 var(--color-line);
+  font-size: var(--text-14);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.dm-msg.is-mine .dm-bubble {
+  background: var(--color-light);
+  color: var(--color-light-text);
+}
+
+.dm-time {
+  flex: none;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.dm-error {
+  padding: 0 var(--space-3);
+}
+
+.dm-form {
+  display: flex;
+  flex: none;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3);
+  border-top: 2px solid var(--color-surface-2);
+}
+
+.dm-input {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--text-14);
+}
+
+/* 접힌 현황판 */
+.friends-rail {
+  width: 52px;
+  height: 100%;
+  border-left: var(--pixel) solid var(--color-line);
+  background: var(--color-sofa);
+}
+
+.fs-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-3) 0;
+  border: 0;
+  background: none;
+  color: var(--color-text);
+  font-family: var(--font-pixel);
+  cursor: pointer;
+}
+
+.fs-rail-label {
+  font-size: var(--text-12);
+  writing-mode: vertical-rl;
+}
+
+.fs-rail-count {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-line);
+  background: var(--color-surface);
+  font-size: var(--text-12);
+}
+
+/* 앱 전체 틀: 왼쪽 화면 + 오른쪽 친구 현황판 */
+.app-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  height: 100%;
+}
+
+.app-main {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+}

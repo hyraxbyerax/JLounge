@@ -27,9 +27,9 @@ async function start() {
   const app = express();
   app.use('/api/lounge', loungeRouter({ auth, musicSearch: createSampleSearch(), counter: memoryCounter() }));
   app.use(errorHandler(createLogger('error')));
-  server = app.listen(0);
+  server = app.listen(0, '127.0.0.1');
   await new Promise((resolve) => server!.once('listening', resolve));
-  return `http://localhost:${(server.address() as AddressInfo).port}/api/lounge`;
+  return `http://127.0.0.1:${(server.address() as AddressInfo).port}/api/lounge`;
 }
 
 afterEach(() => {

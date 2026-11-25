@@ -86,6 +86,42 @@ describe.skipIf(!redisUrl || !dbUrl)('친구 (TEST_REDIS_URL·TEST_DATABASE_URL 
     expect((await h.http(guest, 'GET', '/api/lounge/friends')).status).toBe(403);
   });
 
+  it('1:1 대화: 친구에게만, 바로 전달되고, 안 읽은 수가 보이다가 읽으면 사라진다', async () => {
+    const [a, b, stranger] = [await member('대'), await member('화'), await member('남')];
+    await befriend(a, b);
+    const bSocket = await online(b);
+    const aSocket = await online(a);
+
+    const received = next(bSocket, 'dm:message');
+    const echoed = next(aSocket, 'dm:message'); // 보낸 사람의 다른 탭에도
+    const sent = await h.http(a, 'POST', `/api/lounge/friends/${b.userId}/messages`, { text: '  안녕! 게임 할래?  ' });
+    expect(sent.status).toBe(201);
+    const message = await received;
+    expect(message).toMatchObject({ from: a.userId, to: b.userId, text: '안녕! 게임 할래?' });
+    expect((await echoed).id).toBe(message.id);
+
+    expect((await overview(b)).friends.find((f) => f.userId === a.userId)?.unread).toBe(1);
+    const history = (await h.http(b, 'GET', `/api/lounge/friends/${a.userId}/messages`)).data as { text: string }[];
+    expect(history.map((m) => m.text)).toEqual(['안녕! 게임 할래?']);
+    await h.http(b, 'POST', `/api/lounge/friends/${a.userId}/read`);
+    expect((await overview(b)).friends.find((f) => f.userId === a.userId)?.unread).toBe(0);
+
+    // 친구가 아니면 보내지도 읽지도 못한다, 빈 메시지도 안 된다
+    expect((await h.http(stranger, 'POST', `/api/lounge/friends/${a.userId}/messages`, { text: '안녕' })).code).toBe(
+      'DM_NOT_FRIEND',
+    );
+    expect((await h.http(stranger, 'GET', `/api/lounge/friends/${a.userId}/messages`)).code).toBe('DM_NOT_FRIEND');
+    expect((await h.http(a, 'POST', `/api/lounge/friends/${b.userId}/messages`, { text: '   ' })).code).toBe(
+      'VALIDATION_ERROR',
+    );
+
+    // 도배 방지: 5초에 5개까지 (위에서 1개 보냄)
+    for (let i = 0; i < 4; i++) await h.http(a, 'POST', `/api/lounge/friends/${b.userId}/messages`, { text: `${i}` });
+    expect((await h.http(a, 'POST', `/api/lounge/friends/${b.userId}/messages`, { text: '또' })).code).toBe(
+      'DM_TOO_FAST',
+    );
+  });
+
   it('차단하면 친구가 끊기고, 차단당한 사람은 차단 사실을 모른 채 요청을 못 보낸다', async () => {
     const [a, b] = [await member('마'), await member('바')];
     await befriend(a, b);

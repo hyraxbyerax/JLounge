@@ -12,7 +12,7 @@ import type {
   RoomView,
   ServerChatMessage,
 } from './lounge.ts';
-import type { FriendPresence, UserBrief } from './friends.ts';
+import type { DirectMessage, FriendPresence, UserBrief } from './friends.ts';
 import type { GameType } from './games/common.ts';
 import type { Stroke } from './games/drawing.ts';
 import type { GamePrivate, GameView } from './games/index.ts';
@@ -95,4 +95,6 @@ export type ServerToClientEvents = {
   'friend:changed': () => void;
   /** 친구가 나를 방에 초대했다 */
   'friend:invited': (info: { from: UserBrief; room: { code: string; name: string } }) => void;
+  /** 1:1 대화 새 메시지 (받는 사람과 보낸 사람의 다른 탭 모두에게) */
+  'dm:message': (message: DirectMessage) => void;
 };

@@ -4,6 +4,7 @@ import { LoginDialog } from '../../../shared/auth/LoginPage';
 import { friendsApi } from '../friends/friendsApi';
 import { useFriends } from '../friends/useFriends';
 import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
+import { useMember } from '../../../shared/auth/useMember';
 import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
 import { LockIcon } from '../../../shared/ui/icons';
 import { Toast, useNotice } from '../../../shared/ui/Toast';
@@ -72,6 +73,7 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
   const members = useMemo(() => toMembers(room, friendIds), [room, friendIds]);
   const botJoined = members.some((m) => m.id === BOT.id);
   const isMobile = useMediaQuery('(max-width: 767px)');
+  const member = useMember();
   const [notice, showNotice] = useNotice();
   const [dialog, setDialog] = useState<Dialog>(null);
   const [membersOpen, setMembersOpen] = useState(true);
@@ -181,11 +183,13 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
       <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), invite())}>
         초대
       </button>
-      {onFriends ? (
+      {/* 넓은 화면에서는 오른쪽 친구 현황판이 늘 보이므로 [친구]는 좁은 화면에서만 */}
+      {member && onFriends && (
         <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), onFriends())}>
           친구
         </button>
-      ) : (
+      )}
+      {!member && (
         <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), setDialog('login'))}>
           로그인
         </button>
@@ -340,7 +344,7 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
       onKick={(m: Member) => act(kickMember(m.id))}
       // 회원끼리만 친구 요청 (게스트·연습 상대·이미 친구·이미 요청한 사람 제외)
       canRequestFriend={(m: Member) =>
-        Boolean(onFriends) && !m.isGuest && !m.isBot && !m.isFriend && !pendingIds.has(m.id)
+        Boolean(member) && !m.isGuest && !m.isBot && !m.isFriend && !pendingIds.has(m.id)
       }
       onRequestFriend={(m: Member) =>
         friendsApi.request({ userId: m.id }).then(

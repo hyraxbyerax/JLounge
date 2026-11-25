@@ -75,6 +75,7 @@ export function registerLoungeHandlers(
     notify: {
       request: (to, from) => io.to(userChannel(to)).emit('friend:request', { from }),
       changed: (to) => io.to(userChannel(to)).emit('friend:changed'),
+      dm: (message) => io.to([userChannel(message.to), userChannel(message.from)]).emit('dm:message', message),
     },
   });
 
