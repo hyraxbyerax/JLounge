@@ -55,12 +55,16 @@ export function WindowCard({ room, onOpen }: Props) {
   );
 }
 
-/** 방이 없을 때 보여줄 불 꺼진 창문 */
+/** 방이 없는 칸의 불 꺼진 창문 (아래 이름·인원 자리는 비워 두어 켜진 창문과 크기를 맞춘다) */
 export function DarkWindow() {
   return (
     <span className="window-card is-dark" aria-hidden="true">
       <span className="window">
         <span className="window-glass" />
+      </span>
+      <span className="window-name sign window-blank">&nbsp;</span>
+      <span className="window-meta window-blank">
+        <span className="window-count">&nbsp;</span>
       </span>
     </span>
   );

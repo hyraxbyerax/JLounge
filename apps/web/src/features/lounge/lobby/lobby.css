@@ -54,10 +54,12 @@
 /* 건물 외벽 */
 .building {
   position: relative;
+  display: flex;
   flex: 1;
+  flex-direction: column;
   min-height: 0;
   margin: 0 var(--space-8);
-  padding: var(--space-8) var(--space-8) var(--space-6);
+  padding: var(--space-6) var(--space-8) var(--space-6);
   overflow-y: auto;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: var(--color-surface);
@@ -75,8 +77,17 @@
 
 .building-toolbar {
   display: flex;
-  justify-content: flex-end;
-  margin-bottom: var(--space-4);
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  min-height: 44px;
+  margin-bottom: var(--space-3);
+}
+
+.building-note {
+  color: var(--color-text-muted);
+  font-size: var(--text-14);
 }
 
 .filter-toggle {
@@ -97,20 +108,33 @@
   accent-color: var(--color-light);
 }
 
+/*
+ * 창문: 한 줄에 6개, 두 줄이 건물 높이를 반씩 나눠 위아래 꽉 채운다.
+ * 방이 12개보다 많으면 줄이 늘고 건물 안만 스크롤된다.
+ */
 .window-grid {
+  --row-gap: var(--space-6);
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: var(--space-12) var(--space-8);
+  flex: 1;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-auto-rows: calc((100% - var(--row-gap)) / 2);
+  gap: var(--row-gap) var(--space-6);
+  min-height: 0;
 }
 
-/* 창문 카드 */
+.window-grid > li {
+  min-height: 0;
+}
+
+/* 창문 카드: 칸 높이를 꽉 채우고, 창문이 남는 높이를 다 쓴다 */
 .window-card {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-2);
+  gap: var(--space-1);
   width: 100%;
-  padding: var(--space-2);
+  height: 100%;
+  padding: var(--space-1);
   border: 0;
   border-radius: var(--radius-window);
   background: none;
@@ -123,8 +147,9 @@
   --lit: 0.9;
   position: relative;
   display: block;
+  flex: 1;
   width: 100%;
-  aspect-ratio: 4 / 5;
+  min-height: 48px;
   overflow: hidden;
   border: 6px solid var(--color-line);
   border-radius: var(--radius-window);
@@ -225,10 +250,14 @@
 }
 
 .window-name {
-  margin-top: var(--space-2);
+  max-width: 100%;
+  margin-top: var(--space-1);
+  overflow: hidden;
   font-family: var(--font-pixel);
-  font-size: var(--text-20);
+  font-size: var(--text-16);
   line-height: 1.3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .window-meta {
@@ -270,20 +299,8 @@
   background: var(--color-sofa);
 }
 
-.building-empty {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-6);
-}
-
-.building-empty .window-grid {
-  width: 100%;
-}
-
-.building-empty-text {
-  color: var(--color-text-muted);
-  text-align: center;
+.window-blank {
+  visibility: hidden;
 }
 
 /* 창문 → 방 전환용 덮개 */
@@ -311,8 +328,16 @@
     padding: var(--space-8) var(--space-4);
   }
 
+  /* 휴대폰: 한 줄에 2개, 창문은 4:5 비율로 아래로 쌓고 건물 안이 스크롤된다 */
   .window-grid {
+    flex: none;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: var(--space-8) var(--space-4);
+    grid-auto-rows: auto;
+    gap: var(--space-6) var(--space-4);
+  }
+
+  .window {
+    flex: none;
+    aspect-ratio: 4 / 5;
   }
 }

@@ -76,8 +76,9 @@ export function createFriendsSocket({ io, db, redis, activity, roomStore, rooms,
         const view = await roomStore.view(roomId);
         if (!view) throw fail('ROOM_NOT_FOUND', '방이 없어졌어요');
         if (view.members.some((m) => m.userId === userId)) throw fail('FRIEND_ALREADY_HERE', '이미 이 방에 있어요');
+        // 초대는 방장만 (2026-11-25 사용자 결정)
         const byHost = view.hostId === me().userId;
-        if (view.locked && !byHost) throw fail('ROOM_LOCKED', '잠긴 방은 방장만 초대할 수 있어요');
+        if (!byHost) throw fail('INVITE_HOST_ONLY', '초대는 방장만 할 수 있어요');
         const [online] = (await activity.get([userId])).values();
         if (!online) throw fail('FRIEND_OFFLINE', '친구가 지금 접속해 있지 않아요');
 

@@ -217,11 +217,15 @@ export function App() {
   const inRoom = screen.name === 'room' && lounge.session && me;
 
   // 친구 현황판에서 할 수 있는 일 (어느 모양이든 같다)
+  // 초대는 방장만 할 수 있어서, 방장일 때만 친구 대화에 [이 방에 초대]를 둔다
+  const amHost = Boolean(inRoom && me && lounge.session!.view.hostId === me.userId);
   const panelActions = {
     currentRoomCode: inRoom ? lounge.session!.view.code : null,
-    onInvite: async (friend: FriendEntry) => {
-      await inviteFriend(friend.userId);
-    },
+    onInvite: amHost
+      ? async (friend: FriendEntry) => {
+          await inviteFriend(friend.userId);
+        }
+      : undefined,
     onFollow: (friend: FriendEntry) => {
       setFriendsOpen(false);
       if (friend.presence.room) void enter(friend.presence.room.code, { name: friend.presence.room.name });

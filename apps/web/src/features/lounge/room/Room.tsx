@@ -190,9 +190,12 @@ export function Room({
           연습 상대 부르기
         </button>
       )}
-      <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), invite())}>
-        초대
-      </button>
+      {/* 초대는 방장만 (서버도 확인한다) */}
+      {isHost && (
+        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), invite())}>
+          초대
+        </button>
+      )}
       {/* 넓은 화면에서는 오른쪽 친구 현황판이 늘 보이므로 [친구]는 좁은 화면에서만 */}
       {member && onFriends && (
         <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), onFriends())}>

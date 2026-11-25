@@ -161,7 +161,7 @@ describe.skipIf(!redisUrl || !dbUrl)('친구 (TEST_REDIS_URL·TEST_DATABASE_URL 
     expect((await overview(b)).friends[0]?.presence.online).toBe(false);
   });
 
-  it('친구 초대로는 비밀번호 없이 들어오고, 잠긴 방은 방장이 보낸 초대만 통한다', async () => {
+  it('초대는 방장만, 초대로는 비밀번호·잠금 없이 들어온다', async () => {
     const [host, friend, other] = [await member('자'), await member('차'), await member('카')];
     await befriend(host, friend);
     await befriend(other, friend);
@@ -181,13 +181,12 @@ describe.skipIf(!redisUrl || !dbUrl)('친구 (TEST_REDIS_URL·TEST_DATABASE_URL 
     const joined = await ok<RoomJoined>(friendSocket, 'room:join', { code: room.code, invite: true });
     expect(joined.room.members.map((m) => m.userId)).toContain(friend.userId);
 
-    // 방장이 아닌 사람은 잠긴 방에 초대할 수 없다
+    // 방장이 아닌 사람은 (잠기지 않은 방이어도) 초대할 수 없다
     await ok(friendSocket, 'room:leave');
     const otherSocket = await online(other);
     await ok(hostSocket, 'room:update', { ...settings, locked: false, password: undefined });
     await ok<RoomJoined>(otherSocket, 'room:join', { code: room.code, password: 'secret' });
-    await ok(hostSocket, 'room:update', { ...settings, locked: true, password: undefined });
-    expect(await errorCode(otherSocket, 'friend:invite', { userId: friend.userId })).toBe('ROOM_LOCKED');
+    expect(await errorCode(otherSocket, 'friend:invite', { userId: friend.userId })).toBe('INVITE_HOST_ONLY');
   });
 
   it('게스트로 방에 있다가 로그인하면 같은 자리·방장을 그대로 이어받는다', async () => {

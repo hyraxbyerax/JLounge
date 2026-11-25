@@ -19,6 +19,16 @@ type Props = {
   notify: (message: string) => void;
 };
 
+/** 건물 창문: 한 줄에 6개, 적어도 2줄 */
+const PER_ROW = 6;
+const MIN_WINDOWS = 12;
+
+/** 방 창문 뒤에 채울 불 꺼진 창문 수 (줄이 딱 맞게) */
+function darkSlots(lit: number): number {
+  const total = Math.max(MIN_WINDOWS, Math.ceil(lit / PER_ROW) * PER_ROW);
+  return total - lit;
+}
+
 export function Lobby({
   rooms,
   defaultRoomName,
@@ -94,41 +104,36 @@ export function Lobby({
       </header>
 
       <main className="building">
-        {rooms === null ? (
-          <p className="building-empty-text">불 켜진 방을 찾고 있어요…</p>
-        ) : publicRooms.length === 0 ? (
-          <div className="building-empty">
-            <div className="window-grid">
-              {Array.from({ length: 8 }, (_, i) => (
-                <DarkWindow key={i} />
-              ))}
-            </div>
-            <p className="building-empty-text">아직 불 켜진 방이 없어요. 첫 방을 열어볼까요?</p>
-            <button type="button" className="btn btn-primary" onClick={() => setCreating(true)}>
-              방 만들기
-            </button>
-          </div>
-        ) : (
-          <>
-            <div className="building-toolbar">
-              <label className="filter-toggle">
-                <input type="checkbox" checked={onlyEnterable} onChange={(e) => setOnlyEnterable(e.target.checked)} />
-                입장 가능한 방만 보기
-              </label>
-            </div>
-            {visible.length === 0 ? (
-              <p className="building-empty-text">지금 들어갈 수 있는 방이 없어요. 새 방을 열어볼까요?</p>
-            ) : (
-              <ul className="window-grid">
-                {visible.map((room) => (
-                  <li key={room.id}>
-                    <WindowCard room={room} onOpen={(from) => tryEnter(room, from)} />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
+        <div className="building-toolbar">
+          <p className="building-note">
+            {rooms === null
+              ? '불 켜진 방을 찾고 있어요…'
+              : publicRooms.length === 0
+                ? '아직 불 켜진 방이 없어요. [방 만들기]로 첫 방을 열어볼까요?'
+                : visible.length === 0
+                  ? '지금 들어갈 수 있는 방이 없어요. 새 방을 열어볼까요?'
+                  : null}
+          </p>
+          {publicRooms.length > 0 && (
+            <label className="filter-toggle">
+              <input type="checkbox" checked={onlyEnterable} onChange={(e) => setOnlyEnterable(e.target.checked)} />
+              입장 가능한 방만 보기
+            </label>
+          )}
+        </div>
+        {/* 한 줄에 6개씩, 적어도 두 줄(12칸)을 건물 위아래 꽉 차게. 방이 없는 칸은 불 꺼진 창문 */}
+        <ul className="window-grid">
+          {visible.map((room) => (
+            <li key={room.id}>
+              <WindowCard room={room} onOpen={(from) => tryEnter(room, from)} />
+            </li>
+          ))}
+          {Array.from({ length: darkSlots(visible.length) }, (_, i) => (
+            <li key={`dark-${i}`}>
+              <DarkWindow />
+            </li>
+          ))}
+        </ul>
       </main>
 
       {creating && (
