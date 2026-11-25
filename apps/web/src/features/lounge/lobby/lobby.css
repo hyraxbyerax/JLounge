@@ -91,7 +91,7 @@
   font-size: var(--text-14);
 }
 
-/* 오른쪽 위 페이지 표시 [◀ 1 / 1 ▶] (방이 30개를 넘으면 다음 건물) */
+/* 오른쪽 위 페이지 표시 [◀ 1 / 1 ▶] (방이 12개를 넘으면 한 페이지 더) */
 .building-pager {
   display: flex;
   flex: none;
@@ -103,12 +103,6 @@
   min-width: 40px;
   min-height: 36px;
   padding: 0 var(--space-2);
-}
-
-.pager-floors {
-  font-family: var(--font-pixel);
-  font-size: var(--text-14);
-  font-weight: 700;
 }
 
 .pager-now {
@@ -168,7 +162,7 @@
   align-items: stretch;
   gap: var(--space-3);
   min-height: 0;
-  padding: 5px var(--space-2) var(--tile) 0;
+  padding: 5px var(--space-3) var(--tile);
   border-bottom: 4px solid var(--color-line);
   background:
     /* 바닥 타일 (체크무늬 두 줄) */
@@ -198,22 +192,6 @@
   );
 }
 
-/* 층 번호: 벽에 붙은 명판 */
-.floor-label {
-  display: grid;
-  flex: none;
-  align-self: center;
-  place-items: center;
-  width: 34px;
-  height: 22px;
-  margin-left: var(--space-2);
-  border: 2px solid var(--color-line);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-family: var(--font-pixel);
-  font-size: var(--text-12);
-  font-weight: 700;
-}
 .floor-rooms {
   display: grid;
   flex: 1;
@@ -593,10 +571,6 @@
 
   .floor {
     flex: none;
-  }
-
-  .floor-label {
-    width: 24px;
   }
 
   .floor-rooms {

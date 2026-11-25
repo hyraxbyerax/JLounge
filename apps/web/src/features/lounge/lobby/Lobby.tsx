@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { isEnterable, windowState, type RoomInfo, type RoomSettings } from '../model/room';
-import { buildingCount, buildingView, orderRooms, viewCount } from './building';
+import { orderRooms, pageCount, pageView } from './building';
 import { RoomSettingsDialog } from '../room/RoomSettingsDialog';
 import { DarkWindow, WindowCard } from './WindowCard';
 import './lobby.css';
@@ -27,14 +27,12 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
 
   // 로비에는 공개방만 온다 (서버가 비공개방은 보내지 않는다)
   const publicRooms = rooms ?? [];
-  // 먼저 만든 방이 앞 호실을 지킨다 (101호 → 102호 …). 한 화면에 3개 층, 건물이 다 차면 다음 건물
+  // 먼저 만든 방부터 아래층 왼쪽에. 한 페이지 12개(3개 층 × 4), 넘으면 페이지가 하나 늘어난다
   const visible = orderRooms(publicRooms.filter((r) => !onlyEnterable || isEnterable(r)));
   const [page, setPage] = useState(0);
-  const pages = viewCount(visible.length);
+  const pages = pageCount(visible.length);
   const current = Math.min(page, pages - 1);
-  const view = buildingView(visible, current);
-  const floors = view.floors;
-  const viewLabel = `${buildingCount(visible.length) > 1 ? `${view.building + 1}동 · ` : ''}${view.lowest}~${view.highest}층`;
+  const view = pageView(visible, current);
 
   // 잠금·정원은 서버가 최종 확인하지만, 창문에 보이는 상태로 바로 안내한다
   function tryEnter(room: RoomInfo, from?: DOMRect) {
@@ -103,49 +101,39 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
               입장 가능한 방만 보기
             </label>
           )}
-          {/* 오른쪽 위 페이지: 한 화면에 3개 층 (1~3층 → 4~6층), 건물(24개)이 다 차면 다음 건물 */}
-          {
-            <nav className="building-pager" aria-label="건물 페이지">
-              <button
-                type="button"
-                className="btn btn-ghost pager-btn"
-                aria-label="이전 층"
-                disabled={current === 0}
-                onClick={() => setPage(current - 1)}
-              >
-                ◀
-              </button>
-              <span className="pager-floors">{viewLabel}</span>
-              <span className="pager-now">
-                {current + 1} / {pages}
-              </span>
-              <button
-                type="button"
-                className="btn btn-ghost pager-btn"
-                aria-label="다음 층"
-                disabled={current === pages - 1}
-                onClick={() => setPage(current + 1)}
-              >
-                ▶
-              </button>
-            </nav>
-          }
+          {/* 오른쪽 위 페이지: 12개까지 1 / 1, 13번째 방부터 페이지가 하나 늘어난다 */}
+          <nav className="building-pager" aria-label="페이지">
+            <button
+              type="button"
+              className="btn btn-ghost pager-btn"
+              aria-label="이전 페이지"
+              disabled={current === 0}
+              onClick={() => setPage(current - 1)}
+            >
+              ◀
+            </button>
+            <span className="pager-now">
+              {current + 1} / {pages}
+            </span>
+            <button
+              type="button"
+              className="btn btn-ghost pager-btn"
+              aria-label="다음 페이지"
+              disabled={current === pages - 1}
+              onClick={() => setPage(current + 1)}
+            >
+              ▶
+            </button>
+          </nav>
         </div>
-        {/* 공과대학 7호관: 위가 6층, 아래가 1층. 방은 1층 101호부터, 빈 호실은 불 꺼진 문 */}
+        {/* 복도 3줄 × 문 4개. 방은 아래 복도 왼쪽부터, 방이 없는 칸은 불 꺼진 문 (층·호실 번호는 따로 적지 않는다) */}
         <div className="floors window-grid">
-          {floors.map((f) => (
-            <section key={f.floor} className="floor" aria-label={`${f.floor}층`}>
-              <span className="floor-label" aria-hidden="true">
-                {f.floor}F
-              </span>
+          {view.floors.map((f) => (
+            <section key={f.floor} className="floor">
               <ul className="floor-rooms">
-                {f.slots.map((slot) => (
-                  <li key={slot.number}>
-                    {slot.room ? (
-                      <WindowCard room={slot.room} label={slot.number} onOpen={(from) => tryEnter(slot.room!, from)} />
-                    ) : (
-                      <DarkWindow label={slot.number} />
-                    )}
+                {f.rooms.map((room, i) => (
+                  <li key={room?.id ?? `empty-${f.floor}-${i}`}>
+                    {room ? <WindowCard room={room} onOpen={(from) => tryEnter(room, from)} /> : <DarkWindow />}
                   </li>
                 ))}
               </ul>
