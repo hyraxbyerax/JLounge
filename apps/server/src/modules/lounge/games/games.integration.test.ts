@@ -1,12 +1,11 @@
-// 실제 Redis + Socket.IO 로 게임 공통 틀·캐치마인드·초성 퀴즈를 확인한다 (TEST_REDIS_URL 이 있을 때만)
+// 실제 Redis + Socket.IO 로 게임 공통 틀·캐치마인드를 확인한다 (TEST_REDIS_URL 이 있을 때만)
 import type { GameRandom, GameView, RoomJoined, RoomSummary } from '@lounge/shared';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createHarness, type TestClient } from '../testing.ts';
 
-// 제시어를 정해 둔다: 캐치마인드는 '사과', 초성 퀴즈는 '라면'(음식 · ㄹㅁ)
+// 제시어를 정해 둔다: 첫 라운드는 '사과'
 const fixed: GameRandom = {
   pickWord: (_drawer, used) => (used.length === 0 ? '사과' : `단어${used.length}`),
-  pickChosung: (used) => ({ category: '음식', word: used.length === 0 ? '라면' : `떡볶이${used.length}` }),
 };
 
 const url = process.env.TEST_REDIS_URL;
@@ -47,8 +46,22 @@ describe.skipIf(!url)('게임 (TEST_REDIS_URL 이 있을 때만)', () => {
     expect(await errorCode(others[0]!, 'game:start')).toBe('GAME_NOT_HOST');
 
     const solo = await roomOf('혼자');
-    await ok(solo.host, 'game:select', { type: 'chosung' });
+    await ok(solo.host, 'game:select', { type: 'catchmind' });
     expect(await errorCode(solo.host, 'game:start')).toBe('GAME_NEED_PLAYERS');
+  });
+
+  it('캐치마인드 주제: 방장만, 진행 중이 아닐 때만 바꾸고 모두에게 알린다', async () => {
+    const { host, others } = await roomOf('방장', '손님');
+    await ok(host, 'game:select', { type: 'catchmind' });
+    expect(await errorCode(others[0]!, 'game:topic', { topic: 'campus' })).toBe('GAME_NOT_HOST');
+    expect(await errorCode(host, 'game:topic', { topic: 'nope' })).toBe('VALIDATION_ERROR');
+
+    const changed = stateOf(others[0]!, (v) => v.topic === 'campus');
+    await ok(host, 'game:topic', { topic: 'campus' });
+    expect((await changed).topic).toBe('campus');
+
+    await ok(host, 'game:start');
+    expect(await errorCode(host, 'game:topic', { topic: 'food' })).toBe('GAME_IN_PROGRESS');
   });
 
   it('캐치마인드: 제시어는 그리는 사람에게만, 그림은 그리는 사람만, 정답은 채팅에 올라가지 않는다', async () => {
@@ -112,7 +125,7 @@ describe.skipIf(!url)('게임 (TEST_REDIS_URL 이 있을 때만)', () => {
 
   it('게임 중에 들어온 사람은 이번 판에 끼지 않고 평범하게 채팅한다. 들어오면 지금 게임 화면을 받는다', async () => {
     const { host, room } = await roomOf('방장', '가');
-    await ok(host, 'game:select', { type: 'chosung' });
+    await ok(host, 'game:select', { type: 'catchmind' });
     await ok(host, 'game:start');
     const late = await connect('늦게');
     const joined = await ok<RoomJoined>(late, 'room:join', { code: room.code });
@@ -125,20 +138,9 @@ describe.skipIf(!url)('게임 (TEST_REDIS_URL 이 있을 때만)', () => {
     expect((await chat).text).toBe('라면');
   });
 
-  it('초성 퀴즈: 분류와 초성을 보여주고, 먼저 맞힌 사람이 점수를 받는다', async () => {
-    const { host, others } = await roomOf('방장', '가');
-    const a = others[0]!;
-    await ok(host, 'game:select', { type: 'chosung' });
-    const started = stateOf(a, (v) => v.phase === 'playing');
-    await ok(host, 'game:start');
-    expect((await started).prompt).toBe('음식 · ㄹㅁ');
-
-    const revealed = stateOf(host, (v) => v.revealing);
-    await ok(a, 'chat:send', { text: '라면' });
-    const view = await revealed;
-    expect(view.answer).toBe('라면');
-    expect(view.guessedIds).toEqual([a.user.userId]);
-    expect(view.scores[a.user.userId]).toBeGreaterThanOrEqual(10);
+  it('없는 게임은 고를 수 없다 (초성 퀴즈는 빠짐)', async () => {
+    const { host } = await roomOf('방장', '가');
+    expect(await errorCode(host, 'game:select', { type: 'chosung' })).toBe('VALIDATION_ERROR');
   });
 
   it('방장은 언제든 게임을 끝낼 수 있다 (/endgame)', async () => {

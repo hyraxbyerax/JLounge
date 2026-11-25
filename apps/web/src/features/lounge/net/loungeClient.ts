@@ -16,6 +16,7 @@ import type {
   ServerChatMessage,
   Stroke,
   UserBrief,
+  WordTopic,
 } from '@lounge/shared';
 import { useSyncExternalStore } from 'react';
 import { errorMessage } from '../../../shared/api/ApiError';
@@ -215,6 +216,7 @@ export function reportUnplayable(entryId: string) {
 
 export const selectGame = (type: GameType) => request('game:select', { type });
 export const startGame = () => request('game:start');
+export const setGameTopic = (topic: WordTopic) => request('game:topic', { topic });
 export const quitGame = () => request('game:quit');
 export const undoStroke = () => request('game:undo');
 export const clearStrokes = () => request('game:clear');

@@ -25,11 +25,13 @@ export function rankPlayers(game: GameCommon): RankEntry[] {
   return sorted.map((entry) => ({ ...entry, rank: sorted.findIndex((e) => e.score === entry.score) + 1 }));
 }
 
+/** 고를 수 있는 게임. 지금은 캐치마인드 하나 (2026-11-25 결정: 초성 퀴즈 제외) */
 export const GAME_CATALOG = [
   { type: 'catchmind', name: '캐치마인드', description: '한 사람이 그리고, 나머지가 채팅으로 맞혀요' },
-  { type: 'chosung', name: '초성 퀴즈', description: '분류와 초성을 보고 가장 먼저 단어를 맞혀요' },
 ] as const;
 
 export type GameType = (typeof GAME_CATALOG)[number]['type'];
+export const GAME_TYPES = GAME_CATALOG.map((g) => g.type) as [GameType, ...GameType[]];
 
-export const gameName = (type: GameType) => GAME_CATALOG.find((g) => g.type === type)!.name;
+/** 게임 이름. 예전 버전에서 없어진 게임(Redis에 남은 상태)이면 그냥 "게임" */
+export const gameName = (type: GameType | string): string => GAME_CATALOG.find((g) => g.type === type)?.name ?? '게임';

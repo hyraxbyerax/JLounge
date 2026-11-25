@@ -4,6 +4,7 @@
  * 시간이 흐르는 처리는 tick()이 "종료 예정 시각"을 확인하는 방식이다 (서버 메모리 타이머 없이).
  */
 import { rankPlayers, type GameCommon, type RankEntry } from './common.ts';
+import type { WordTopic } from './words.ts';
 
 export const CATCHMIND_RULES = {
   totalRounds: 6,
@@ -35,6 +36,8 @@ export type CatchMindState = GameCommon & {
   type: 'catchmind';
   turn: CatchMindTurn | null;
   usedWords: string[];
+  /** 방장이 고른 제시어 주제 (예전에 저장된 상태에는 없을 수 있어 없으면 전체) */
+  topic?: WordTopic;
 };
 
 export type CatchMindEvent =
@@ -48,8 +51,8 @@ export type CatchMindEvent =
 
 export type Step = { state: CatchMindState; events: CatchMindEvent[] };
 
-/** 그리는 사람에 맞는 제시어를 고른다 (이미 쓴 단어 제외) */
-export type PickWord = (drawerId: string, usedWords: string[]) => string;
+/** 그리는 사람과 주제에 맞는 제시어를 고른다 (이미 쓴 단어 제외) */
+export type PickWord = (drawerId: string, usedWords: string[], topic: WordTopic) => string;
 
 export type GuessResult =
   /** 정답 */
@@ -61,7 +64,7 @@ export type GuessResult =
 
 const zeroScores = (players: string[]) => Object.fromEntries(players.map((id) => [id, 0]));
 
-export function createCatchMind(players: string[]): CatchMindState {
+export function createCatchMind(players: string[], topic: WordTopic = 'all'): CatchMindState {
   return {
     type: 'catchmind',
     phase: 'waiting',
@@ -71,7 +74,14 @@ export function createCatchMind(players: string[]): CatchMindState {
     totalRounds: CATCHMIND_RULES.totalRounds,
     turn: null,
     usedWords: [],
+    topic,
   };
+}
+
+/** 주제 바꾸기 (진행 중에는 다음 판부터가 아니라 아예 못 바꾼다) */
+export function setTopic(state: CatchMindState, topic: WordTopic): CatchMindState {
+  if (state.phase === 'playing') return state;
+  return { ...state, topic };
 }
 
 /** 대기 중일 때 참가자 목록을 바꾼다 (입장·퇴장). 진행 중이면 다음 판부터 반영 */
@@ -108,7 +118,7 @@ function drawerFor(players: string[], round: number, present?: string[]): string
 
 function beginRound(state: CatchMindState, round: number, now: number, pickWord: PickWord, present?: string[]): Step {
   const drawerId = drawerFor(state.players, round, present);
-  const word = pickWord(drawerId, state.usedWords);
+  const word = pickWord(drawerId, state.usedWords, state.topic ?? 'all');
   return {
     state: {
       ...state,

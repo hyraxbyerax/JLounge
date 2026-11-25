@@ -7,9 +7,8 @@ import { useMediaQuery } from '../../../shared/hooks/useMediaQuery';
 import type { YouTubePlayer } from '../../../shared/youtube/youtubeApi';
 import { LockIcon } from '../../../shared/ui/icons';
 import { Toast, useNotice } from '../../../shared/ui/Toast';
-import { BOT, type GameType } from '@lounge/shared';
+import { BOT, GAME_CATALOG, type GameType } from '@lounge/shared';
 import { CatchMindPanel } from '../game/catchmind/CatchMindPanel';
-import { ChosungPanel } from '../game/chosung/ChosungPanel';
 import { GamePickerDialog } from '../game/GamePickerDialog';
 import { toMembers, type Me, type Member, type RoomSettings } from '../model/room';
 import { createRoomState, parseCommand, roomReducer, type PostedMessage } from '../model/roomState';
@@ -24,6 +23,7 @@ import {
   requestSong,
   seekMusic,
   selectGame,
+  setGameTopic,
   sendChat,
   sendStroke,
   startGame,
@@ -155,7 +155,12 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
   const actions = (
     <>
       {isHost && !game && (
-        <button type="button" className="btn btn-ghost" onClick={() => (closeMenu(), setDialog('game'))}>
+        <button
+          type="button"
+          className="btn btn-ghost"
+          // 게임이 하나뿐이면 고르는 창 없이 바로 연다
+          onClick={() => (closeMenu(), GAME_CATALOG.length === 1 ? pickGame(GAME_CATALOG[0].type) : setDialog('game'))}
+        >
           게임
         </button>
       )}
@@ -223,19 +228,18 @@ export function Room({ session, me, created, onLeave, onFriends }: Props) {
   );
 
   const gameActions = { onStart: () => void act(startGame()), onQuit: () => void act(quitGame()) };
-  const gamePanel = !game ? null : game.view.type === 'catchmind' ? (
+  const gamePanel = !game ? null : (
     <CatchMindPanel
       game={game}
       meId={me.id}
       isHost={isHost}
       nicknameOf={nicknameOf}
       {...gameActions}
+      onTopic={(topic) => void act(setGameTopic(topic))}
       onStroke={(stroke) => void act(sendStroke(stroke))}
       onUndo={() => void act(undoStroke())}
       onClear={() => void act(clearStrokes())}
     />
-  ) : (
-    <ChosungPanel game={game} isHost={isHost} nicknameOf={nicknameOf} {...gameActions} />
   );
 
   const music = session.music;

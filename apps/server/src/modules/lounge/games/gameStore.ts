@@ -8,7 +8,7 @@
  *   room:{id}:strokes   List    지금 라운드 그림 (획 JSON)
  *   rooms:game-due      ZSet    방 id → 다음에 확인할 시각 (games/gameHandlers.ts 가 0.5초마다 꺼낸다)
  */
-import type { GameState, Stroke } from '@lounge/shared';
+import { isKnownGame, type GameState, type Stroke } from '@lounge/shared';
 import type { RedisConnections } from '../../../shared/redis.ts';
 
 type Client = RedisConnections['client'];
@@ -51,9 +51,17 @@ end
 return taken`;
 
 export function createGameStore(client: Client) {
-  async function get(id: string): Promise<StoredGame | null> {
+  /** 저장된 그대로 (판 번호 비교용) */
+  async function getRaw(id: string): Promise<StoredGame | null> {
     const json = await client.get(gameKeys.game(id));
     return json ? (JSON.parse(json) as StoredGame) : null;
+  }
+
+  /** 지금 있는 게임만. 예전 버전에서 없어진 게임(초성 퀴즈 등)이 남아 있으면 게임이 없는 것으로 본다 */
+  const known = (raw: StoredGame | null) => (raw && isKnownGame(raw.state) ? raw : null);
+
+  async function get(id: string): Promise<StoredGame | null> {
+    return known(await getRaw(id));
   }
 
   return {
@@ -68,13 +76,14 @@ export function createGameStore(client: Client) {
       change: (current: StoredGame | null) => { next: Omit<StoredGame, 'v'> | null; result: T } | undefined,
     ): Promise<{ changed: boolean; stored: StoredGame | null; result?: T }> {
       for (let attempt = 0; attempt < 8; attempt++) {
-        const current = await get(id);
+        const raw = await getRaw(id);
+        const current = known(raw);
         const outcome = change(current);
         if (!outcome) return { changed: false, stored: current };
-        const stored = outcome.next ? { ...outcome.next, v: (current?.v ?? 0) + 1 } : null;
+        const stored = outcome.next ? { ...outcome.next, v: (raw?.v ?? 0) + 1 } : null;
         const ok = await client.eval(COMPARE_AND_SET, {
           keys: [gameKeys.game(id)],
-          arguments: [String(current?.v ?? 0), stored ? JSON.stringify(stored) : ''],
+          arguments: [String(raw?.v ?? 0), stored ? JSON.stringify(stored) : ''],
         });
         if (ok === 1) return { changed: true, stored, result: outcome.result };
       }

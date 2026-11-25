@@ -4,9 +4,12 @@ import {
   INK_NAMES,
   INKS,
   PEN_WIDTHS,
+  TOPIC_LABEL,
+  WORD_TOPICS,
   type GameSnapshot,
   type Ink,
   type Stroke,
+  type WordTopic,
 } from '@lounge/shared';
 import { useState } from 'react';
 import { GameLobby, Scoreboard } from '../GameLobby';
@@ -21,15 +24,28 @@ type Props = {
   nicknameOf: (userId: string) => string;
   onStart: () => void;
   onQuit: () => void;
+  onTopic: (topic: WordTopic) => void;
   onStroke: (stroke: Stroke) => void;
   onUndo: () => void;
   onClear: () => void;
 };
 
 /** 캐치마인드 화면. 판정·시간·제시어는 서버가 정하고, 제시어는 그리는 사람(과 맞힌 사람)에게만 온다 */
-export function CatchMindPanel({ game, meId, isHost, nicknameOf, onStart, onQuit, onStroke, onUndo, onClear }: Props) {
+export function CatchMindPanel({
+  game,
+  meId,
+  isHost,
+  nicknameOf,
+  onStart,
+  onQuit,
+  onTopic,
+  onStroke,
+  onUndo,
+  onClear,
+}: Props) {
   const { view } = game;
   const remainingSec = useRemainingSec(view.endsAt);
+  const topic = view.topic ?? 'all';
 
   if (view.phase !== 'playing') {
     return (
@@ -43,6 +59,29 @@ export function CatchMindPanel({ game, meId, isHost, nicknameOf, onStart, onQuit
           onQuit={onQuit}
           rules={
             <>
+              <div className="rule-row">
+                <dt>주제</dt>
+                <dd>
+                  {isHost ? (
+                    <span className="topic-chips" role="radiogroup" aria-label="제시어 주제">
+                      {WORD_TOPICS.map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          role="radio"
+                          aria-checked={t === topic}
+                          className="topic-chip"
+                          onClick={() => t !== topic && onTopic(t)}
+                        >
+                          {TOPIC_LABEL[t]}
+                        </button>
+                      ))}
+                    </span>
+                  ) : (
+                    <>{TOPIC_LABEL[topic]} · 방장이 골라요</>
+                  )}
+                </dd>
+              </div>
               <div className="rule-row">
                 <dt>라운드</dt>
                 <dd>{view.totalRounds}라운드 · 돌아가며 그려요</dd>

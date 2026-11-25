@@ -16,6 +16,7 @@ import type { FriendPresence, UserBrief } from './friends.ts';
 import type { GameType } from './games/common.ts';
 import type { Stroke } from './games/drawing.ts';
 import type { GamePrivate, GameView } from './games/index.ts';
+import type { WordTopic } from './games/words.ts';
 import type { MusicCommandInput, MusicState } from './music.ts';
 
 export type AckResult<T> = { data: T } | { error: { code: string; message: string } };
@@ -55,6 +56,8 @@ export type ClientToServerEvents = {
   /** 방장: 게임 고르기 (대기 화면이 열린다) / 시작·한 판 더 / 닫기(/endgame 포함) */
   'game:select': (input: { type: GameType }, ack: Ack<null>) => void;
   'game:start': (ack: Ack<null>) => void;
+  /** 캐치마인드 제시어 주제 (방장, 진행 중이 아닐 때) */
+  'game:topic': (input: { topic: WordTopic }, ack: Ack<null>) => void;
   'game:quit': (ack: Ack<null>) => void;
   /** 그리는 사람만: 한 획 / 되돌리기 / 전부 지우기 */
   'game:stroke': (stroke: Stroke, ack: Ack<null>) => void;

@@ -9,5 +9,14 @@ export * from './games/drawing.ts';
 export * from './games/gameBot.ts';
 export { BOT_DRAWINGS } from './games/botDrawings.ts';
 export { CATCHMIND_RULES, normalizeAnswer } from './games/catchmind.ts';
-export { CHOSUNG_RULES, CHOSUNG_WORDS, chosungOf } from './games/chosung.ts';
-export { pickUnused, WORDS } from './games/words.ts';
+export {
+  botWordsFor,
+  pickUnused,
+  TOPIC_LABEL,
+  WORD_TOPICS,
+  WORDS,
+  WORDS_BY_TOPIC,
+  wordsFor,
+  type WordTopic,
+} from './games/words.ts';
+export { setTopic as setCatchMindTopic } from './games/catchmind.ts';

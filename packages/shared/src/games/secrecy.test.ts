@@ -3,6 +3,7 @@ import {
   createGame,
   gameView,
   guessAnyGame,
+  isKnownGame,
   isRoundLive,
   privateView,
   startAnyGame,
@@ -13,10 +14,7 @@ import {
 import { CATCHMIND_RULES } from './catchmind.ts';
 
 // 방 전체에 보내는 화면(gameView)에는 정답이 절대 들어가면 안 된다. 다른 브라우저로 제시어가 새지 않게 하는 핵심 규칙
-const random: GameRandom = {
-  pickWord: () => '고양이',
-  pickChosung: () => ({ category: '동물', word: '기린' }),
-};
+const random: GameRandom = { pickWord: () => '고양이' };
 
 describe('캐치마인드 정답 숨기기', () => {
   const started = () => startAnyGame(createGame('catchmind', ['a', 'b', 'c']), 0, random).state;
@@ -50,20 +48,19 @@ describe('캐치마인드 정답 숨기기', () => {
   });
 });
 
-describe('초성 퀴즈 정답 숨기기', () => {
-  it('진행 중에는 초성만, 정답을 받는 사람은 없다', () => {
-    const s = startAnyGame(createGame('chosung', ['a', 'b']), 0, random).state;
-    expect(JSON.stringify(gameView(s, 0))).not.toContain('기린');
-    expect(privateView(s, 'a')).toBeNull();
-    expect(privateView(s, 'b')).toBeNull();
+describe('저장된 상태 확인', () => {
+  it('지금 있는 게임만 알아본다 (예전 초성 퀴즈 상태는 무시)', () => {
+    expect(isKnownGame(createGame('catchmind', ['a']))).toBe(true);
+    expect(isKnownGame({ type: 'chosung' })).toBe(false);
+    expect(isKnownGame(null)).toBe(false);
   });
 });
 
 describe('참가자', () => {
   it('대기 중에는 방에 있는 사람으로 바뀌고, 진행 중에 들어온 사람은 다음 판부터', () => {
-    const waiting = createGame('chosung', ['a']);
+    const waiting = createGame('catchmind', ['a']);
     expect(withPlayers(waiting, ['a', 'b']).players).toEqual(['a', 'b']);
-    const playing = startAnyGame(createGame('chosung', ['a', 'b']), 0, random).state;
+    const playing = startAnyGame(createGame('catchmind', ['a', 'b']), 0, random).state;
     expect(withPlayers(playing, ['a', 'b', 'c']).players).toEqual(['a', 'b']);
   });
 });

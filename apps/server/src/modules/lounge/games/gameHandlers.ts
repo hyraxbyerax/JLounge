@@ -8,17 +8,20 @@ import {
   BOT,
   BOT_DRAWINGS,
   BOT_LINES,
+  botWordsFor,
   botGuessChance,
   botGuessDelay,
   botStrokesDue,
   botWrongGuess,
   CATCHMIND_RULES,
-  CHOSUNG_RULES,
-  CHOSUNG_WORDS,
   createGame,
   gameName,
   gameSelectInput,
+  gameTopicInput,
   gameView,
+  setCatchMindTopic,
+  TOPIC_LABEL,
+  wordsFor,
   guessAnyGame,
   isRoundLive,
   pickUnused,
@@ -50,15 +53,8 @@ const FOLLOW_UP_MS = 500;
 /** 캐치마인드 라운드 진행 중 채팅 간격 (명세 6장) */
 const SLOW_CHAT_SEC = 3;
 
-const BOT_WORDS = Object.keys(BOT_DRAWINGS);
-const CHOSUNG_POOL = CHOSUNG_WORDS.map((w) => w.word);
-
 export const defaultRandom: GameRandom = {
-  pickWord: (drawerId, used) => pickUnused(drawerId === BOT.id ? BOT_WORDS : WORDS, used),
-  pickChosung: (used) => {
-    const word = pickUnused(CHOSUNG_POOL, used);
-    return CHOSUNG_WORDS.find((w) => w.word === word)!;
-  },
+  pickWord: (drawerId, used, topic) => pickUnused(drawerId === BOT.id ? botWordsFor(topic) : wordsFor(topic), used),
 };
 
 const fail = (code: string, message: string) => new AppError(code, message);
@@ -143,29 +139,23 @@ export function createGameHandlers({
         case 'started':
           await rooms.system(
             roomId,
-            state.type === 'catchmind'
-              ? `캐치마인드를 시작해요! ${state.totalRounds}라운드, 라운드마다 ${CATCHMIND_RULES.roundMs / 1000}초예요`
-              : `초성 퀴즈를 시작해요! ${state.totalRounds}문제, 문제마다 ${CHOSUNG_RULES.roundMs / 1000}초예요`,
+            `캐치마인드를 시작해요! ${state.totalRounds}라운드, 라운드마다 ${CATCHMIND_RULES.roundMs / 1000}초예요 (주제: ${TOPIC_LABEL[state.topic ?? 'all']})`,
           );
           break;
         case 'roundStarted':
           await games.clearStrokes(roomId);
           io.to(roomChannel(roomId)).emit('game:strokes', { roomId, strokes: [] });
-          if ('drawerId' in event) {
-            await rooms.system(roomId, `${event.round}라운드: ${nickname(event.drawerId)}님이 그려요`);
-            if (event.drawerId === BOT.id) await botSay(roomId, BOT_LINES.myTurn);
-          } else {
-            await rooms.system(roomId, `${event.round}번 문제!`);
-          }
+          await rooms.system(roomId, `${event.round}라운드: ${nickname(event.drawerId)}님이 그려요`);
+          if (event.drawerId === BOT.id) await botSay(roomId, BOT_LINES.myTurn);
           break;
         case 'correct':
           await rooms.system(roomId, `${nickname(event.userId)}님이 정답을 맞혔어요! (+${event.points}점)`);
-          if (state.type === 'catchmind' && event.userId !== BOT.id && state.turn?.drawerId === BOT.id) {
+          if (event.userId !== BOT.id && state.turn?.drawerId === BOT.id) {
             await botSay(roomId, BOT_LINES.someoneGotIt);
           }
           break;
         case 'roundEnded': {
-          const anyone = 'guessedIds' in event ? event.guessedIds.length > 0 : event.winnerId !== null;
+          const anyone = event.guessedIds.length > 0;
           await rooms.system(
             roomId,
             anyone
@@ -210,8 +200,8 @@ export function createGameHandlers({
     const turn = state.turn;
     const elapsed = t - turn.startedAt;
 
-    if (state.type === 'catchmind' && state.turn?.drawerId === BOT.id) {
-      const drawing = BOT_DRAWINGS[state.turn.word] ?? [];
+    if (turn.drawerId === BOT.id) {
+      const drawing = BOT_DRAWINGS[turn.word] ?? [];
       const due = botStrokesDue(drawing.length, elapsed);
       if (due > bot.drawn) {
         out.newStrokes.push(...drawing.slice(bot.drawn, due));
@@ -219,22 +209,21 @@ export function createGameHandlers({
       }
       return { state, memory: bot };
     }
-    if (state.type === 'catchmind' && state.turn?.guessedIds.includes(BOT.id)) return { state, memory: bot };
+    if (turn.guessedIds.includes(BOT.id)) return { state, memory: bot };
     if (t < bot.nextGuessAt) return { state, memory: bot };
 
     bot = { ...bot, nextGuessAt: t + botGuessDelay() };
-    if (state.type === 'catchmind' && strokeCount === 0) {
+    if (strokeCount === 0) {
       if (!bot.teased) out.botSays.push(BOT_LINES.yourTurnEmpty);
       return { state, memory: { ...bot, teased: true } };
     }
-    const roundMs = state.type === 'catchmind' ? CATCHMIND_RULES.roundMs : CHOSUNG_RULES.roundMs;
-    const word = state.turn!.word;
-    if (Math.random() < botGuessChance(elapsed, roundMs)) {
+    const word = turn.word;
+    if (Math.random() < botGuessChance(elapsed, CATCHMIND_RULES.roundMs)) {
       const guess = guessAnyGame(state, BOT.id, word, t);
       out.events.push(...guess.events);
       return { state: guess.state, memory: bot };
     }
-    out.botSays.push(botWrongGuess(word, state.type === 'catchmind' ? WORDS : CHOSUNG_POOL));
+    out.botSays.push(botWrongGuess(word, WORDS));
     return { state, memory: bot };
   }
 
@@ -301,6 +290,29 @@ export function createGameHandlers({
         await games.clearStrokes(roomId);
         await rooms.system(roomId, `방장이 ${gameName(type)}을(를) 골랐어요`);
         if (ids.includes(BOT.id)) await botSay(roomId, BOT_LINES.gameSelected);
+        await publish(roomId, stored);
+        return null;
+      }),
+    );
+
+    socket.on('game:topic', (input, ack) =>
+      rooms.respond(socket, 'game:topic', ack, async () => {
+        const roomId = await rooms.requireRoom(socket);
+        await requireHost(socket, roomId);
+        const { topic } = validate(gameTopicInput, input);
+        const { changed, stored } = await games.update(roomId, (current) => {
+          if (!current || current.state.type !== 'catchmind' || current.state.phase === 'playing') return undefined;
+          if ((current.state.topic ?? 'all') === topic) return undefined;
+          return { next: { ...current, state: setCatchMindTopic(current.state, topic) }, result: null };
+        });
+        if (!changed || !stored) {
+          const current = await games.get(roomId);
+          if (current?.state.phase === 'playing')
+            throw fail('GAME_IN_PROGRESS', '게임이 진행 중이에요. 끝난 뒤에 바꿔주세요');
+          if (current?.state.type !== 'catchmind') throw fail('GAME_NONE', '캐치마인드를 먼저 골라주세요');
+          return null; // 이미 그 주제
+        }
+        await rooms.system(roomId, `제시어 주제를 '${TOPIC_LABEL[topic]}'(으)로 바꿨어요`);
         await publish(roomId, stored);
         return null;
       }),
