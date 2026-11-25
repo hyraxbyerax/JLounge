@@ -1020,3 +1020,61 @@ code {
   min-width: 72px;
   font-variant-numeric: tabular-nums;
 }
+
+/* [초대] 창: 친구 목록 + 링크 복사 */
+.invite-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.invite-list {
+  display: flex;
+  flex-direction: column;
+  max-height: min(320px, 50vh);
+  overflow-y: auto;
+  border: 2px solid var(--color-line);
+}
+
+.invite-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 52px;
+  padding: var(--space-1) var(--space-3);
+}
+
+.invite-item + .invite-item {
+  border-top: 2px solid var(--color-surface-2);
+}
+
+.invite-who {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.btn.invite-btn {
+  min-height: 36px;
+  padding: 0 var(--space-3);
+  font-size: var(--text-12);
+}
+
+.invite-note {
+  color: var(--color-online);
+}
+
+.invite-link {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding-top: var(--space-3);
+  border-top: 2px dashed var(--color-surface-2);
+}
+
+.invite-code {
+  color: var(--color-text);
+  font-family: var(--font-pixel);
+  letter-spacing: 0.08em;
+}

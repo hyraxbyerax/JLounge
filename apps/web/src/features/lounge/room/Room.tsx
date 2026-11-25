@@ -34,6 +34,7 @@ import {
   type RoomSession,
 } from '../net/loungeClient';
 import { ChatPanel } from './ChatPanel';
+import { InviteDialog } from './InviteDialog';
 import { MemberList } from './MemberList';
 import { LoungeTV } from './LoungeTV';
 import { MusicBar, type HostMusicCommand } from './MusicBar';
@@ -59,7 +60,7 @@ type Props = {
 };
 
 type Tab = 'chat' | 'queue' | 'members';
-type Dialog = 'song' | 'settings' | 'game' | 'login' | null;
+type Dialog = 'song' | 'settings' | 'game' | 'login' | 'invite' | null;
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'chat', label: '채팅' },
@@ -158,15 +159,8 @@ export function Room({
     }
   }
 
-  async function invite() {
-    const link = `${window.location.origin}/room/${room.code}`;
-    try {
-      await navigator.clipboard.writeText(link);
-      showNotice('초대 링크를 복사했어요');
-    } catch {
-      showNotice(`초대 링크: ${link}`);
-    }
-  }
+  /** [초대]: 친구 목록에서 한 명씩 초대 + 아래 [링크 복사하기] */
+  const invite = () => setDialog('invite');
 
   async function saveSettings(settings: RoomSettings) {
     await updateRoom(settings);
@@ -494,6 +488,13 @@ export function Room({
       )}
       {dialog === 'game' && <GamePickerDialog onPick={pickGame} onClose={() => setDialog(null)} />}
       {dialog === 'login' && <LoginDialog onClose={() => setDialog(null)} />}
+      {dialog === 'invite' && (
+        <InviteDialog
+          roomCode={room.code}
+          memberIds={new Set(members.map((m) => m.id))}
+          onClose={() => setDialog(null)}
+        />
+      )}
       <Toast message={notice} />
     </div>
   );
