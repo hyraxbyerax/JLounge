@@ -13,18 +13,15 @@ type FormProps = {
   footer?: ReactNode;
   /** 대화상자 안에서는 제목을 대화상자가 보여준다 */
   showTitle?: boolean;
+  /** 로그인 ↔ 회원가입이 바뀔 때 (대화상자 제목을 맞추려고) */
+  onModeChange?: (mode: 'login' | 'signup') => void;
 };
 
 /**
  * 사이트 공용 로그인·회원가입 양식.
  * 캠퍼스 플래너 팀원이 만든 AuthPage 의 동작을 그대로 옮기고 라운지 디자인으로 다시 그렸다.
  */
-export function LoginForm({
-  lead = '로그인하면 캠퍼스 플래너와 친구 기능을 쓸 수 있어요',
-  onDone,
-  footer,
-  showTitle = true,
-}: FormProps) {
+export function LoginForm({ lead, onDone, footer, showTitle = true, onModeChange }: FormProps) {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -51,7 +48,9 @@ export function LoginForm({
   };
 
   const switchMode = () => {
-    setMode(mode === 'login' ? 'signup' : 'login');
+    const next = mode === 'login' ? 'signup' : 'login';
+    setMode(next);
+    onModeChange?.(next);
     setError(null);
     setFieldErrors({});
   };
@@ -59,7 +58,7 @@ export function LoginForm({
   return (
     <form className="login-card" onSubmit={submit} noValidate>
       {showTitle && <h1 className="login-title">{mode === 'login' ? '로그인' : '회원가입'}</h1>}
-      <p className="muted">{lead}</p>
+      {lead && <p className="login-lead muted">{lead}</p>}
 
       {mode === 'signup' && (
         <label className="login-field">
@@ -103,13 +102,15 @@ export function LoginForm({
           {error}
         </p>
       )}
-      <button className="btn btn-primary" disabled={busy}>
-        {busy ? '처리 중…' : mode === 'login' ? '로그인' : '회원가입'}
-      </button>
-      <button type="button" className="btn-text" onClick={switchMode}>
-        {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
-      </button>
-      {footer}
+      <div className="login-actions">
+        <button className="btn btn-primary" disabled={busy}>
+          {busy ? '처리 중…' : mode === 'login' ? '로그인' : '회원가입'}
+        </button>
+        <button type="button" className="btn-text login-switch" onClick={switchMode}>
+          {mode === 'login' ? '계정이 없으신가요? 회원가입' : '이미 계정이 있으신가요? 로그인'}
+        </button>
+        {footer}
+      </div>
     </form>
   );
 }
@@ -137,13 +138,14 @@ export function LoginPage({ lead, onDone, onBack }: PageProps) {
   );
 }
 
-/** 방 안에서 게스트가 로그인할 때 (로그인하면 같은 자리·방장을 그대로 이어받는다) */
+/** 작은 로그인 창 (방 안·친구 현황판에서. 방 안이면 로그인해도 같은 자리·방장을 그대로 이어받는다) */
 export function LoginDialog({ onClose }: { onClose: () => void }) {
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   return (
-    <Modal title="로그인" onClose={onClose}>
+    <Modal title={mode === 'login' ? '로그인' : '회원가입'} onClose={onClose} centerTitle>
       <LoginForm
         showTitle={false}
-        lead="로그인해도 이 방에 그대로 있어요. 방장이었다면 방장도 그대로예요"
+        onModeChange={setMode}
         onDone={onClose}
         footer={
           <button type="button" className="btn btn-ghost" onClick={onClose}>

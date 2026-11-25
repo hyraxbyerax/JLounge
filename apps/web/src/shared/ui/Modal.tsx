@@ -6,10 +6,12 @@ type Props = {
   children: ReactNode;
   /** 검색 결과처럼 내용이 많을 때 넓게 */
   wide?: boolean;
+  /** 제목 가운데 정렬 (로그인처럼 양식 하나만 있는 작은 창) */
+  centerTitle?: boolean;
 };
 
 /** 네이티브 <dialog> 기반 대화상자. Esc로 닫히고 포커스가 안에 머문다. */
-export function Modal({ title, onClose, children, wide = false }: Props) {
+export function Modal({ title, onClose, children, wide = false, centerTitle = false }: Props) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
 
@@ -20,7 +22,7 @@ export function Modal({ title, onClose, children, wide = false }: Props) {
 
   return (
     <dialog ref={ref} className={`modal${wide ? ' is-wide' : ''}`} aria-labelledby={titleId} onClose={onClose}>
-      <h2 id={titleId} className="modal-title">
+      <h2 id={titleId} className={`modal-title${centerTitle ? ' is-center' : ''}`}>
         {title}
       </h2>
       {children}

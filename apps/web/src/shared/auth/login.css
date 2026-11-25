@@ -1,26 +1,35 @@
 .login-page {
   display: grid;
   place-items: center;
+  height: 100%;
   padding: var(--space-4);
 }
 
+/*
+ * 로그인·회원가입 양식: 이름표 → 입력칸을 한 칸씩 같은 너비로 쌓고,
+ * 아래 버튼들도 같은 너비로 맞춘다 (전환 링크만 가운데 글자).
+ */
 .login-card {
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
   width: min(100%, 400px);
   padding: var(--space-8);
-  border-radius: var(--radius-panel);
+  border: var(--pixel) solid var(--color-line);
   background: var(--color-surface);
+  box-shadow: var(--pixel-shadow-lg);
 }
 
 .login-title {
   font-size: var(--text-28);
-  font-weight: 800;
+  font-weight: 400;
+  text-align: center;
 }
 
-.login-card > .muted {
-  margin-bottom: var(--space-2);
+.login-lead {
+  margin-top: calc(var(--space-2) * -1);
+  font-size: var(--text-14);
+  text-align: center;
 }
 
 .login-field {
@@ -29,13 +38,40 @@
   gap: var(--space-1);
 }
 
-.login-field .form-error {
+.login-field .input {
+  width: 100%;
+}
+
+.login-field .form-error,
+.login-field .form-hint {
   font-style: normal;
 }
 
-/* 방 안의 로그인 대화상자: 카드 대신 대화상자가 테두리를 맡는다 */
+.login-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.login-actions .btn {
+  width: 100%;
+}
+
+.login-switch {
+  align-self: center;
+  min-height: 36px;
+}
+
+/* 작은 로그인 창: 카드 대신 대화상자가 테두리를 맡는다 */
 .modal .login-card {
   width: 100%;
   padding: 0;
+  border: 0;
   background: none;
+  box-shadow: none;
+}
+
+.modal-title.is-center {
+  text-align: center;
 }

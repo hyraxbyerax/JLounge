@@ -19,7 +19,7 @@ type Props = {
 export function PlannerApp({ onBack, friendsPanel }: Props) {
   const member = useMember();
 
-  if (!member) return <LoginPage lead="캠퍼스 플래너는 로그인한 학생만 쓸 수 있어요" onBack={onBack} />;
+  if (!member) return <LoginPage onBack={onBack} />;
 
   return (
     <div className="campus-planner">
