@@ -52,6 +52,8 @@ export function SongSearchDialog({ onPick, onClose }: Props) {
             type="search"
             placeholder="곡 제목이나 가수"
             autoFocus
+            // 브라우저가 지난 검색어를 기억해 목록으로 띄우지 않게
+            autoComplete="off"
             maxLength={100}
             value={query}
             onChange={(e) => setQuery(e.target.value)}

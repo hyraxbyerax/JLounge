@@ -70,6 +70,7 @@ export function RoomSettingsDialog({ mode, initial, defaultName = '', currentMem
         <input
           id="room-name"
           className="input"
+          autoComplete="off"
           maxLength={ROOM_NAME_MAX}
           value={name}
           onChange={(e) => setName(e.target.value)}

@@ -239,6 +239,7 @@ export function FriendsSidebar({
           id={`fs-add-${variant}`}
           className="input fs-add-input"
           placeholder="닉네임 또는 친구 코드"
+          autoComplete="off"
           maxLength={20}
           value={target}
           onChange={(e) => setTarget(e.target.value)}
