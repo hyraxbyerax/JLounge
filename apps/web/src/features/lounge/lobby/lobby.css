@@ -105,6 +105,12 @@
   padding: 0 var(--space-2);
 }
 
+.pager-floors {
+  font-family: var(--font-pixel);
+  font-size: var(--text-14);
+  font-weight: 700;
+}
+
 .pager-now {
   min-width: 44px;
   font-family: var(--font-pixel);
@@ -211,7 +217,7 @@
 .floor-rooms {
   display: grid;
   flex: 1;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 0 var(--space-4);
   min-height: 0;
 }
@@ -227,6 +233,9 @@
 
 /* 강의실 카드: 왼쪽 문(바닥에 딱 서게 아래 맞춤) + 오른쪽 벽의 명판. 칸 높이를 꽉 채운다 */
 .window-card {
+  /* 문 높이 = 층 높이, 너비 = 높이의 0.6배 (칸 너비의 42%를 넘지 않게) */
+  --door-h: min(calc(100cqh - 2px), calc(100cqw * 0.42 / 0.6), 220px);
+
   display: flex;
   align-items: flex-end;
   gap: var(--space-2);
@@ -245,11 +254,11 @@
   background: var(--color-light);
 }
 
-/* 문 옆 벽에 붙은 명판: 호실 · 방 이름 · 인원 (위쪽 벽, 몰딩 선 위) */
+/* 문 옆 벽에 붙은 명판: 호실 · 방 이름 · 인원 (진짜 강의실처럼 문 높이의 중간쯤) */
 .room-text {
   display: flex;
-  align-self: flex-start;
-  padding-top: 2px;
+  align-self: flex-end;
+  margin-bottom: calc(var(--door-h) * 0.42);
   flex: 1;
   flex-direction: column;
   align-items: flex-start;
@@ -309,7 +318,6 @@
   position: relative;
   display: block;
   /* 문 높이 = 층 높이 (위아래 조금 띄움), 너비 = 높이의 0.6배 (칸 너비의 42%를 넘지 않게) */
-  --door-h: min(calc(100cqh - 2px), calc(100cqw * 0.42 / 0.6), 170px);
   flex: none;
   width: calc(var(--door-h) * 0.6);
   height: var(--door-h);
@@ -433,8 +441,8 @@
 .is-game::before {
   content: '';
   position: absolute;
-  top: 4px;
-  left: -6px;
+  bottom: calc(var(--door-h) - 2px);
+  left: -4px;
   z-index: 3;
   width: 4px;
   height: 4px;
@@ -592,7 +600,7 @@
   }
 
   .floor-rooms {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-3) var(--space-2);
   }
 
@@ -612,5 +620,13 @@
 
   .room-text {
     align-items: center;
+  }
+}
+
+/* 층이 높아 문이 크면 명판 글자도 키운다 */
+@container (min-height: 110px) {
+  .room-plate,
+  .room-text .window-name {
+    font-size: var(--text-14);
   }
 }

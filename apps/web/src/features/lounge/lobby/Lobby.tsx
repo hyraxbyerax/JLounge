@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { isEnterable, windowState, type RoomInfo, type RoomSettings } from '../model/room';
-import { buildingFloors, orderRooms, pageCount } from './building';
+import { buildingCount, buildingView, orderRooms, viewCount } from './building';
 import { RoomSettingsDialog } from '../room/RoomSettingsDialog';
 import { DarkWindow, WindowCard } from './WindowCard';
 import './lobby.css';
@@ -27,12 +27,14 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
 
   // 로비에는 공개방만 온다 (서버가 비공개방은 보내지 않는다)
   const publicRooms = rooms ?? [];
-  // 먼저 만든 방이 앞 호실을 지킨다 (101호 → 102호 …). 36개가 넘으면 다음 건물(페이지)
+  // 먼저 만든 방이 앞 호실을 지킨다 (101호 → 102호 …). 한 화면에 3개 층, 건물이 다 차면 다음 건물
   const visible = orderRooms(publicRooms.filter((r) => !onlyEnterable || isEnterable(r)));
   const [page, setPage] = useState(0);
-  const pages = pageCount(visible.length);
+  const pages = viewCount(visible.length);
   const current = Math.min(page, pages - 1);
-  const floors = buildingFloors(visible, current);
+  const view = buildingView(visible, current);
+  const floors = view.floors;
+  const viewLabel = `${buildingCount(visible.length) > 1 ? `${view.building + 1}동 · ` : ''}${view.lowest}~${view.highest}층`;
 
   // 잠금·정원은 서버가 최종 확인하지만, 창문에 보이는 상태로 바로 안내한다
   function tryEnter(room: RoomInfo, from?: DOMRect) {
@@ -101,25 +103,26 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
               입장 가능한 방만 보기
             </label>
           )}
-          {/* 오른쪽 위 페이지: 방이 한 건물(30개)을 넘으면 다음 건물로 (건물이 하나뿐이어도 1 / 1) */}
+          {/* 오른쪽 위 페이지: 한 화면에 3개 층 (1~3층 → 4~6층), 건물(24개)이 다 차면 다음 건물 */}
           {
             <nav className="building-pager" aria-label="건물 페이지">
               <button
                 type="button"
                 className="btn btn-ghost pager-btn"
-                aria-label="이전 건물"
+                aria-label="이전 층"
                 disabled={current === 0}
                 onClick={() => setPage(current - 1)}
               >
                 ◀
               </button>
+              <span className="pager-floors">{viewLabel}</span>
               <span className="pager-now">
                 {current + 1} / {pages}
               </span>
               <button
                 type="button"
                 className="btn btn-ghost pager-btn"
-                aria-label="다음 건물"
+                aria-label="다음 층"
                 disabled={current === pages - 1}
                 onClick={() => setPage(current + 1)}
               >
