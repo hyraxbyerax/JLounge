@@ -1,14 +1,21 @@
-/* 화면에 딱 맞게 고정 (스크롤 없음). 입구 문 크기를 화면 높이에 맞춘다 */
+/* 화면에 딱 맞게 고정 (스크롤 없음). 간판 + 큰 버튼 두 개를 화면 한가운데에 */
 .home {
+  /* 아이콘 높이: 화면 높이에 맞춰 (간판·글자 자리를 빼고), 120~240px */
+  --icon-h: clamp(120px, calc(100dvh - 400px), 240px);
+  /* 문판·손잡이·달력 칸 색 (아이콘 안에서만) */
+  --door-panel: color-mix(in srgb, var(--color-light) 70%, var(--color-surface));
+  --door-shine: var(--color-surface);
+  --door-knob: var(--color-gold);
+  --calendar-day: color-mix(in srgb, var(--color-line) 25%, var(--color-surface));
+
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-3);
+  gap: var(--space-8);
   height: 100%;
   min-height: 0;
-  /* 위아래 여백을 같게 두어 제목+입구 상자 묶음이 화면 한가운데 오게 */
   padding: var(--space-12) var(--space-4);
   overflow: hidden;
   text-align: center;
@@ -29,98 +36,95 @@
   font-weight: 600;
 }
 
+/* 간판: 픽셀 글꼴 기본 크기(12px)의 6배 */
 .home-title {
-  font-size: var(--text-40);
-  line-height: 1.3;
+  font-size: 72px;
+  line-height: 1;
+  letter-spacing: 0.02em;
+  text-shadow: 4px 4px 0 var(--color-light);
 }
 
-.home-sub {
-  color: var(--color-text-muted);
-}
-
-.home-building {
-  /* 문 너비: 화면 높이에서 제목·글자 자리를 빼고 남은 만큼 (문 비율 3:4), 100~220px */
-  --door: clamp(100px, calc((100dvh - 360px) * 0.75), 220px);
+/* 큰 버튼 두 개를 가로로, 크기를 똑같이 */
+.home-choices {
   display: grid;
-  grid-template-columns: repeat(2, var(--door));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--space-8);
   width: min(100%, 600px);
-  justify-content: center;
-  margin-top: var(--space-6);
-  padding: var(--space-8) var(--space-8) var(--space-2);
-  border: var(--pixel) solid var(--color-line);
-  border-radius: var(--radius-panel);
-  background: var(--color-surface);
-  box-shadow: var(--pixel-shadow-lg);
 }
 
-.entrance {
+.home-choice {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
-  padding: 0 0 var(--space-6);
-  border: 0;
-  border-radius: var(--radius-window);
-  background: none;
+  gap: var(--space-2);
+  padding: var(--space-6) var(--space-4) var(--space-4);
+  border: var(--pixel) solid var(--color-line);
+  background: var(--color-surface);
+  box-shadow: var(--pixel-shadow-lg);
   color: inherit;
   cursor: pointer;
 }
 
-.entrance-door {
-  display: grid;
-  place-items: center;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  margin-bottom: var(--space-3);
-  border: 6px solid var(--color-line);
-  border-radius: var(--radius-window);
-  background: var(--color-light);
-  box-shadow: var(--pixel-shadow-lg);
+.home-choice:hover {
+  background: var(--color-surface-2);
 }
 
-.is-schedule.is-open .entrance-door {
-  background: var(--color-cool-fill);
-}
-
-.entrance:active .entrance-door {
+.home-choice:active {
   box-shadow: none;
   transform: translate(5px, 5px);
 }
 
-/* 로그인 전에는 불 꺼진 문 + 자물쇠, 로그인하면 불이 켜진다 */
-.is-schedule:not(.is-open) .entrance-door {
-  background: var(--color-surface-2);
-  color: var(--color-text-muted);
+.home-icon-wrap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
 }
 
-.entrance-lock {
-  width: 32px;
-  height: 32px;
+.home-icon {
+  display: block;
+  height: var(--icon-h);
+  margin-bottom: var(--space-2);
 }
 
-.entrance-label {
+/* 로그인 전 플래너: 달력이 흐리고 자물쇠 */
+.home-choice.is-locked .home-icon {
+  opacity: 0.45;
+}
+
+.home-lock {
+  position: absolute;
+  width: 36px;
+  height: 36px;
+  color: var(--color-text);
+}
+
+.home-choice-label {
   font-family: var(--font-pixel);
+  font-size: var(--text-16);
 }
 
-.entrance-hint {
+.home-choice-hint {
   color: var(--color-text-muted);
   font-size: var(--text-12);
 }
 
 @media (max-width: 767px) {
-  /* 오른쪽 위 로그인 버튼과 제목이 겹치지 않게 */
+  /* 오른쪽 위 로그인 버튼과 간판이 겹치지 않게 */
   .home {
+    --icon-h: clamp(90px, calc(100dvh - 420px), 180px);
+    gap: var(--space-6);
     padding-top: calc(var(--space-12) + var(--space-8));
   }
 
   .home-title {
-    font-size: var(--text-28);
+    font-size: 48px;
   }
 
-  .home-building {
-    --door: clamp(90px, calc((100dvh - 380px) * 0.75), 40vw);
+  .home-choices {
     gap: var(--space-4);
-    padding: var(--space-6) var(--space-4) 0;
+  }
+
+  .home-choice-label {
+    font-size: var(--text-14);
   }
 }

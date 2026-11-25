@@ -68,7 +68,7 @@ export function Lobby({
       <header className="lobby-header">
         <h1 className="lobby-title sign">
           <button type="button" className="title-link" onClick={onHome}>
-            전북대학교 휴식 라운지
+            JLounge
           </button>
         </h1>
         <div className="lobby-actions">

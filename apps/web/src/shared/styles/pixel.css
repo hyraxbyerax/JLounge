@@ -75,36 +75,10 @@
   border: 2px solid color-mix(in srgb, var(--color-line) 25%, var(--color-surface));
 }
 
-/* 픽셀 크기 그대로 보이도록 픽셀 글꼴 기본 크기(12px)의 배수로 */
-.home-title {
-  font-size: 36px;
-}
-
+/* 픽셀 크기 그대로 보이도록 픽셀 글꼴 기본 크기(12px)의 배수로 (메인 간판 크기는 home.css) */
 .lobby-title,
 .room-name {
   font-size: 24px;
-}
-
-/* 메인 입구 문: 픽셀 손잡이 */
-.entrance-door {
-  position: relative;
-}
-
-.entrance-door::after {
-  content: '';
-  position: absolute;
-  top: 55%;
-  right: 14%;
-  width: 12px;
-  height: 12px;
-  background: var(--color-line);
-  box-shadow: inset -3px -3px 0 color-mix(in srgb, var(--color-surface) 40%, var(--color-line));
-}
-
-@media (max-width: 767px) {
-  .home-title {
-    font-size: 24px;
-  }
 }
 
 .bubble {
