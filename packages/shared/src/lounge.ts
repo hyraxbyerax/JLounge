@@ -115,6 +115,8 @@ export type RoomSummary = {
   game: string | null;
   /** 재생 중인 곡 제목 (2단계에서 채운다) */
   nowPlaying: string | null;
+  /** 방을 만든 시각 (ms). 로비 건물에서 먼저 만든 방이 앞 호실(101호…)에 자리를 지키게 */
+  createdAt: number;
 };
 
 /** 서버를 거친 채팅. seq 는 방마다 1부터 늘어나는 번호 (놓친 메시지 다시 받기에 쓴다) */

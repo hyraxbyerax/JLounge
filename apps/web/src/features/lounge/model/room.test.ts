@@ -11,6 +11,7 @@ const room = (over: Partial<RoomInfo> = {}): RoomInfo => ({
   maxMembers: 6,
   game: null,
   nowPlaying: null,
+  createdAt: 0,
   ...over,
 });
 

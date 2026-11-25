@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
-import { isEnterable, sortRooms, windowState, type RoomInfo, type RoomSettings } from '../model/room';
+import { isEnterable, windowState, type RoomInfo, type RoomSettings } from '../model/room';
+import { BUILDING_NAME, buildingFloors, orderRooms, pageCount } from './building';
 import { RoomSettingsDialog } from '../room/RoomSettingsDialog';
 import { DarkWindow, WindowCard } from './WindowCard';
 import './lobby.css';
@@ -19,22 +20,6 @@ type Props = {
   notify: (message: string) => void;
 };
 
-/** 건물 창문: 한 줄에 6개, 적어도 2줄 */
-const PER_ROW = 6;
-const MIN_WINDOWS = 12;
-
-/** 건물 전체 칸 수 (줄이 딱 맞게, 적어도 두 줄) */
-function slotCount(rooms: number): number {
-  return Math.max(MIN_WINDOWS, Math.ceil(rooms / PER_ROW) * PER_ROW);
-}
-
-/** 칸 위치 → 호실 번호. 건물처럼 맨 윗줄이 가장 높은 층 (두 줄이면 위 201~206호, 아래 101~106호) */
-function roomNumber(index: number, total: number): string {
-  const floors = total / PER_ROW;
-  const floor = floors - Math.floor(index / PER_ROW);
-  return `${floor}${String((index % PER_ROW) + 1).padStart(2, '0')}호`;
-}
-
 export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHome, onFriends, notify }: Props) {
   const [onlyEnterable, setOnlyEnterable] = useState(false);
   const [code, setCode] = useState('');
@@ -42,8 +27,12 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
 
   // 로비에는 공개방만 온다 (서버가 비공개방은 보내지 않는다)
   const publicRooms = rooms ?? [];
-  const visible = sortRooms(publicRooms).filter((r) => !onlyEnterable || isEnterable(r));
-  const slots = slotCount(visible.length);
+  // 먼저 만든 방이 앞 호실을 지킨다 (101호 → 102호 …). 36개가 넘으면 다음 건물(페이지)
+  const visible = orderRooms(publicRooms.filter((r) => !onlyEnterable || isEnterable(r)));
+  const [page, setPage] = useState(0);
+  const pages = pageCount(visible.length);
+  const current = Math.min(page, pages - 1);
+  const floors = buildingFloors(visible, current);
 
   // 잠금·정원은 서버가 최종 확인하지만, 창문에 보이는 상태로 바로 안내한다
   function tryEnter(room: RoomInfo, from?: DOMRect) {
@@ -99,6 +88,7 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
 
       <main className="building">
         <div className="building-toolbar">
+          <span className="building-sign">{BUILDING_NAME}</span>
           <p className="building-note">
             {rooms === null
               ? '방을 찾고 있어요…'
@@ -112,20 +102,54 @@ export function Lobby({ rooms, defaultRoomName, onEnter, onCode, onCreate, onHom
               입장 가능한 방만 보기
             </label>
           )}
+          {/* 방이 한 건물(36개)을 넘으면 다음 건물로 */}
+          {pages > 1 && (
+            <nav className="building-pager" aria-label="건물 페이지">
+              <button
+                type="button"
+                className="btn btn-ghost pager-btn"
+                aria-label="이전 건물"
+                disabled={current === 0}
+                onClick={() => setPage(current - 1)}
+              >
+                ◀
+              </button>
+              <span className="pager-now">
+                {current + 1} / {pages}
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost pager-btn"
+                aria-label="다음 건물"
+                disabled={current === pages - 1}
+                onClick={() => setPage(current + 1)}
+              >
+                ▶
+              </button>
+            </nav>
+          )}
         </div>
-        {/* 한 줄(한 층)에 강의실 6개, 적어도 두 층. 방이 없는 호실은 불 꺼진 문 */}
-        <ul className="window-grid">
-          {visible.map((room, i) => (
-            <li key={room.id}>
-              <WindowCard room={room} label={roomNumber(i, slots)} onOpen={(from) => tryEnter(room, from)} />
-            </li>
+        {/* 공과대학 7호관: 위가 6층, 아래가 1층. 방은 1층 101호부터, 빈 호실은 불 꺼진 문 */}
+        <div className="floors window-grid">
+          {floors.map((f) => (
+            <section key={f.floor} className="floor" aria-label={`${f.floor}층`}>
+              <span className="floor-label" aria-hidden="true">
+                {f.floor}F
+              </span>
+              <ul className="floor-rooms">
+                {f.slots.map((slot) => (
+                  <li key={slot.number}>
+                    {slot.room ? (
+                      <WindowCard room={slot.room} label={slot.number} onOpen={(from) => tryEnter(slot.room!, from)} />
+                    ) : (
+                      <DarkWindow label={slot.number} />
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </section>
           ))}
-          {Array.from({ length: slots - visible.length }, (_, i) => (
-            <li key={`dark-${i}`}>
-              <DarkWindow label={roomNumber(visible.length + i, slots)} />
-            </li>
-          ))}
-        </ul>
+        </div>
       </main>
 
       {creating && (

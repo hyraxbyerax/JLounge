@@ -14,7 +14,7 @@ type Initial = {
 type Props = {
   mode: 'create' | 'edit';
   initial?: Initial;
-  /** 새 방 이름 기본값 (예: "Guest04821의 방") */
+  /** 새 방 이름 기본값 (예: "Guest04821님의 방") */
   defaultName?: string;
   /** 지금 방에 있는 인원. 최대 인원은 이보다 작게 할 수 없다 */
   currentMembers?: number;

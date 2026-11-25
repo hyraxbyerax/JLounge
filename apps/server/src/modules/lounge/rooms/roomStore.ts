@@ -387,6 +387,7 @@ export function createRoomStore(client: Client, random: (n: number) => Buffer = 
             maxMembers: Number(hash.maxMembers),
             game: playing?.phase === 'playing' ? gameName(playing.type) : null,
             nowPlaying: now ? (JSON.parse(now) as { title: string }).title : null,
+            createdAt: Number(hash.createdAt ?? 0),
           };
         }),
       );

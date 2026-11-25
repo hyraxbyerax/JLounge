@@ -59,7 +59,7 @@
   flex-direction: column;
   min-height: 0;
   margin: 0 var(--space-8);
-  padding: var(--space-6) var(--space-8) var(--space-6);
+  padding: var(--space-6) var(--space-6) var(--space-4);
   overflow-y: auto;
   border-radius: var(--radius-panel) var(--radius-panel) 0 0;
   background: var(--color-surface);
@@ -86,8 +86,42 @@
 }
 
 .building-note {
+  flex: 1;
   color: var(--color-text-muted);
   font-size: var(--text-14);
+}
+
+/* 건물 간판: 공과대학 7호관 */
+.building-sign {
+  flex: none;
+  padding: var(--space-1) var(--space-3);
+  border: var(--pixel) solid var(--color-line);
+  background: var(--color-sofa);
+  box-shadow: var(--pixel-shadow);
+  font-family: var(--font-pixel);
+  font-size: var(--text-14);
+  font-weight: 700;
+}
+
+/* 다음 건물로 넘기기 (방이 36개를 넘을 때) */
+.building-pager {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn.pager-btn {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 var(--space-2);
+}
+
+.pager-now {
+  min-width: 44px;
+  font-family: var(--font-pixel);
+  font-size: var(--text-14);
+  text-align: center;
 }
 
 .filter-toggle {
@@ -109,40 +143,103 @@
 }
 
 /*
- * 창문: 한 줄에 6개, 두 줄이 건물 높이를 반씩 나눠 위아래 꽉 채운다.
- * 방이 12개보다 많으면 줄이 늘고 건물 안만 스크롤된다.
+ * 공과대학 7호관: 6개 층이 건물 높이를 똑같이 나눠 위아래 꽉 채운다 (위 6층 → 아래 1층).
+ * 층마다 왼쪽에 층 표시, 강의실 6개, 아래에 층 바닥선.
  */
-.window-grid {
-  --row-gap: var(--space-6);
+.floors {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 0;
+}
+
+.floor {
+  display: flex;
+  flex: 1;
+  align-items: stretch;
+  gap: var(--space-3);
+  min-height: 0;
+  padding-bottom: var(--space-1);
+  border-bottom: var(--pixel) solid var(--color-line);
+}
+
+.floor-label {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 32px;
+  color: var(--color-text-muted);
+  font-family: var(--font-pixel);
+  font-size: var(--text-14);
+}
+
+.floor-rooms {
   display: grid;
   flex: 1;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  grid-auto-rows: calc((100% - var(--row-gap)) / 2);
-  gap: var(--row-gap) var(--space-6);
+  gap: 0 var(--space-4);
   min-height: 0;
 }
 
-.window-grid > li {
+/*
+ * 호실 칸마다 크기를 재서(container) 문 크기를 정한다: 문 높이 = 칸 높이 - 글자 줄, 문 너비 = 높이의 0.6배.
+ * 층이 낮아도 문이 옆으로 퍼지지 않고 문 모양(3:5)을 지킨다.
+ */
+.floor-rooms > li {
   min-height: 0;
+  container-type: size;
 }
 
-/* 창문 카드: 칸 높이를 꽉 채우고, 창문이 남는 높이를 다 쓴다 */
+/* 강의실 카드: 왼쪽 문 + 오른쪽 명판. 칸 높이를 꽉 채운다 */
 .window-card {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
   width: 100%;
   height: 100%;
-  padding: var(--space-1);
+  padding: var(--space-1) 0;
   border: 0;
   border-radius: var(--radius-window);
   background: none;
   color: inherit;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
 }
 
+.window-card:not(.is-dark):hover .room-plate {
+  background: var(--color-light);
+}
+
+/* 문 옆 명판: 호실 · 방 이름 · 인원 */
+.room-text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-width: 0;
+}
+
+.is-empty-name {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+/* 명판의 방 이름은 두 줄까지 ("Guest04821님의 / 방") */
+.room-text .window-name {
+  display: -webkit-box;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: normal;
+  word-break: break-all;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.room-text .window-meta {
+  align-items: flex-start;
+}
 /*
  * 강의실 문 (2026-11-25: 창문 → 대학교 느낌의 강의실 문). 문 위에 호실 명판, 문에는 세로로 긴 유리창.
  * 방이 열려 있으면 유리창에 불이 켜지고(게임 중이면 분홍·민트), 잠긴 방은 블라인드 + 자물쇠, 빈 호실은 불 꺼진 유리.
@@ -153,16 +250,17 @@
   --glass-off: color-mix(in srgb, var(--color-line) 18%, var(--color-bg));
 }
 
-/* 호실 명판 */
+/* 문 위 호실 명판 */
 .room-plate {
   flex: none;
-  padding: 1px var(--space-2);
+  padding: 0 var(--space-1);
   border: 2px solid var(--color-line);
   background: var(--color-surface);
-  box-shadow: 2px 2px 0 var(--color-line);
+  color: var(--color-text);
   font-family: var(--font-pixel);
   font-size: var(--text-12);
-  line-height: 1.4;
+  line-height: 14px;
+  white-space: nowrap;
 }
 
 .is-dark .room-plate {
@@ -174,12 +272,14 @@
   --lit: 0.9;
   position: relative;
   display: block;
-  flex: 1;
-  width: min(78%, 120px);
-  min-height: 48px;
-  margin-top: var(--space-1);
+  /* 문 높이 = 층 높이 (위아래 조금 띄움), 너비 = 높이의 0.6배 (칸 너비의 42%를 넘지 않게) */
+  --door-h: min(calc(100cqh - 8px), calc(100cqw * 0.42 / 0.6), 160px);
+  flex: none;
+  width: calc(var(--door-h) * 0.6);
+  height: var(--door-h);
+  min-height: 24px;
   overflow: hidden;
-  border: 5px solid var(--color-line);
+  border: 4px solid var(--color-line);
   border-bottom-width: 0;
   background: var(--door-wood);
   box-shadow: var(--pixel-shadow-lg);
@@ -201,10 +301,10 @@
 .window::after {
   content: '';
   position: absolute;
-  top: 54%;
+  top: 56%;
   right: 12%;
-  width: 12px;
-  height: 8px;
+  width: 8px;
+  height: 6px;
   border: 2px solid var(--color-line);
   background: var(--color-gold);
 }
@@ -212,10 +312,10 @@
 /* 문에 난 세로 유리창 */
 .window-glass {
   position: absolute;
-  top: 9%;
+  top: 12%;
   left: 50%;
   width: 40%;
-  height: 34%;
+  height: 36%;
   border: 3px solid var(--color-line);
   background: var(--glass-off);
   transform: translateX(-50%);
@@ -277,28 +377,28 @@
 .is-dark .window {
   background: color-mix(in srgb, var(--color-line) 8%, var(--door-wood));
 }
+
+/* 문 아래: 방 이름("OO님의 방") 한 줄 + 인원 한 줄. 높이를 고정해 문 크기가 모두 같게 */
 .window-name {
   max-width: 100%;
-  margin-top: var(--space-1);
   overflow: hidden;
   font-family: var(--font-pixel);
-  font-size: var(--text-16);
-  line-height: 1.3;
+  font-size: var(--text-12);
+  line-height: 1.4;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-/* 문 아래 글자 칸은 높이를 고정해서 (곡·게임 줄이 있든 없든) 문 크기가 모두 같게 */
 .window-meta {
   display: flex;
   flex: none;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  height: 40px;
+  height: 16px;
   max-width: 100%;
   overflow: hidden;
-  font-size: var(--text-14);
+  font-size: var(--text-12);
+  line-height: 16px;
 }
 
 .window-name {
@@ -364,17 +464,39 @@
     padding: var(--space-8) var(--space-4);
   }
 
-  /* 휴대폰: 한 줄에 2개, 강의실 문은 3:5 비율로 아래로 쌓고 건물 안이 스크롤된다 */
-  .window-grid {
+  /* 휴대폰: 한 층의 강의실을 3개씩 두 줄로, 문은 3:5 비율, 건물 안이 스크롤된다 */
+  .floors {
     flex: none;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-rows: auto;
-    gap: var(--space-6) var(--space-4);
+  }
+
+  .floor {
+    flex: none;
+  }
+
+  .floor-label {
+    width: 24px;
+  }
+
+  .floor-rooms {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--space-3) var(--space-2);
+  }
+
+  /* 휴대폰은 건물 안이 스크롤되므로 칸 높이를 재지 않고 문 크기를 정해 둔다 */
+  .floor-rooms > li {
+    container-type: normal;
   }
 
   .window {
-    flex: none;
-    width: 62%;
-    aspect-ratio: 3 / 5;
+    --door-h: 84px;
+  }
+
+  .window-card {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .room-text {
+    align-items: center;
   }
 }

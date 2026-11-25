@@ -255,7 +255,7 @@ export function App() {
         {(screen.name === 'lobby' || (screen.name === 'room' && !inRoom)) && (
           <Lobby
             rooms={lounge.lobby}
-            defaultRoomName={`${me?.nickname ?? '나'}의 방`}
+            defaultRoomName={`${me?.nickname ?? '나'}님의 방`}
             onEnter={(room: RoomInfo, from?: DOMRect) => void enter(room.code, { name: room.name, from })}
             onCode={(code) => void enter(code)}
             onCreate={create}
